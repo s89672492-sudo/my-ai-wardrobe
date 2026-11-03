@@ -9,6 +9,8 @@ export type WorkerRequest =
   | { type: 'process'; id: number; bitmap: ImageBitmap; tasks: ModelName[] }
   /** 點選式去背：points 為 0~1 正規化座標，每個點各推論一次後取聯集 */
   | { type: 'cutout'; id: number; bitmap: ImageBitmap; points: { x: number; y: number }[] }
+  /** 全身分析：姿勢 → 依人體範圍裁切 → 第二次姿勢 + 分割（提高解析度） */
+  | { type: 'analyze'; id: number; bitmap: ImageBitmap }
   | { type: 'cancel'; id: number; targetId: number }
   | { type: 'dispose'; id: number };
 
@@ -24,6 +26,15 @@ export type WorkerResponse =
       timings: { poseMs?: number; segmentMs?: number; totalMs: number };
     }
   | { type: 'cutoutResult'; id: number; mask: ImageBitmap; ms: number }
+  | {
+      type: 'analyzeResult'; id: number;
+      keypoints: Keypoint[];
+      /** 人體遮罩（白色 + alpha），對應原圖中的 maskRect 區域 */
+      mask: ImageBitmap;
+      maskRect: { x: number; y: number; w: number; h: number };
+      timings: { pass1Ms: number; pass2Ms: number; segmentMs: number; totalMs: number };
+      refined: boolean;
+    }
   | { type: 'cancelled'; id: number }
   | { type: 'disposed'; id: number }
   | { type: 'error'; id: number; message: string; stage: string };

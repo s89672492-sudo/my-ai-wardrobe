@@ -13,6 +13,7 @@ import { TryOn } from './pages/TryOn';
 import { Wardrobe } from './pages/Wardrobe';
 import { GarmentDetail } from './pages/GarmentDetail';
 import { GarmentEditor } from './pages/GarmentEditor';
+import { PersonPage } from './pages/PersonPage';
 
 // 技術檢測頁較大，延遲載入
 void cleanupOldAICaches();
@@ -34,6 +35,8 @@ export default function App() {
         {route.name === 'garment' && <GarmentDetail key={route.id} id={route.id} />}
         {route.name === 'garment-edit' && <GarmentEditor key={`edit-${route.id}`} id={route.id} />}
         {route.name === 'tryon' && <TryOn />}
+        {route.name === 'person-new' && <PersonPage key="new" />}
+        {route.name === 'person' && <PersonPage key={route.id} id={route.id} />}
         {route.name === 'outfits' && <Outfits />}
         {route.name === 'settings' && <Settings />}
         {route.name === 'diagnostics' && <Suspense fallback={<p className="page muted">載入中…</p>}><Diagnostics /></Suspense>}

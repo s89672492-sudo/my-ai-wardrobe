@@ -1,0 +1,30 @@
+name: Test
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      # 與正式部署相同：官方固定版本模型 + SHA-256 驗證
+      - run: npm run fetch-models
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: E2E（模擬 iPhone 13 與 Pixel 7，本機 AI 推論）
+        run: |
+          npx vite preview --port 4173 --strictPort &
+          npx --yes wait-on@8.0.3 http://localhost:4173/my-ai-wardrobe/ --timeout 30000
+          node tests/e2e/fetch-photos.mjs
+          node tests/e2e/run.mjs "iPhone 13"
+          node tests/e2e/run.mjs "Pixel 7"

@@ -62,6 +62,7 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
     case 'init': void init(msg); break;
     case 'process': void processFrame(msg); break;
     case 'cutout': void cutout(msg); break;
+    case 'analyze': void analyze(msg); break;
     case 'cancel': cancelled.add(msg.targetId); break;
     case 'dispose': dispose(msg.id); break;
   }
@@ -222,6 +223,63 @@ async function cutout(msg: Extract<WorkerRequest, { type: 'cutout' }>) {
     post({ type: 'cutoutResult', id, mask, ms: performance.now() - t0 }, [mask]);
   } catch (err) {
     post({ type: 'error', id, stage: 'cutout', message: errMsg(err) });
+  } finally {
+    bitmap.close();
+    cancelled.delete(id);
+  }
+}
+
+/**
+ * 兩階段全身分析：
+ * 1. 整張圖跑 MoveNet，取得人體大致範圍
+ * 2. 以人體範圍（外擴）裁成正方形，再跑一次 MoveNet（官方建議的裁切推論，關鍵點更準）
+ *    與 Selfie Segmenter（256×256 解析度集中在人身上，而非背景）
+ * 若第一次信心太低，退回整張圖的結果。
+ */
+async function analyze(msg: Extract<WorkerRequest, { type: 'analyze' }>) {
+  const { bitmap, id } = msg;
+  const t0 = performance.now();
+  try {
+    if (!models.pose || !models.segmenter) throw new Error('人體辨識模型尚未載入');
+    post({ type: 'progress', id, stage: '尋找人體位置' });
+    const kp1 = await runPose(bitmap);
+    const pass1Ms = performance.now() - t0;
+    if (cancelled.has(id)) return post({ type: 'cancelled', id });
+
+    const good = kp1.filter((k) => k.score >= 0.25);
+    let region = { x: 0, y: 0, w: bitmap.width, h: bitmap.height };
+    let refined = false;
+    if (good.length >= 6) {
+      const xs = good.map((k) => k.x), ys = good.map((k) => k.y);
+      const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+      const bh = y1 - y0, bw = x1 - x0;
+      // 頭頂、腳底、手臂與衣服會超出關鍵點範圍，外擴
+      const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2 - bh * 0.03;
+      const side = Math.max(bh * 1.35, bw * 1.6);
+      const rx = Math.max(0, Math.round(cx - side / 2)), ry = Math.max(0, Math.round(cy - side / 2));
+      region = { x: rx, y: ry, w: Math.min(bitmap.width, Math.round(cx + side / 2)) - rx, h: Math.min(bitmap.height, Math.round(cy + side / 2)) - ry };
+      refined = region.w * region.h < bitmap.width * bitmap.height * 0.9;
+    }
+    const crop = refined ? await createImageBitmap(bitmap, region.x, region.y, region.w, region.h) : bitmap;
+
+    post({ type: 'progress', id, stage: '精確定位關鍵點' });
+    const p0 = performance.now();
+    let keypoints = refined ? (await runPose(crop)).map((k) => ({ ...k, x: k.x + region.x, y: k.y + region.y })) : kp1;
+    // 第二次整體信心比第一次差時，逐點取較可信者
+    if (refined) keypoints = keypoints.map((k, i) => (kp1[i]!.score > k.score + 0.15 ? kp1[i]! : k));
+    const pass2Ms = performance.now() - p0;
+    if (cancelled.has(id)) { if (crop !== bitmap) crop.close(); return post({ type: 'cancelled', id }); }
+
+    post({ type: 'progress', id, stage: '分割人體輪廓' });
+    const s0 = performance.now();
+    const seg = await runSegmenter(crop);
+    const segmentMs = performance.now() - s0;
+    if (crop !== bitmap) crop.close();
+    if (cancelled.has(id)) { seg.bitmap.close(); return post({ type: 'cancelled', id }); }
+    post({ type: 'analyzeResult', id, keypoints, mask: seg.bitmap, maskRect: region, refined,
+      timings: { pass1Ms, pass2Ms, segmentMs, totalMs: performance.now() - t0 } }, [seg.bitmap]);
+  } catch (err) {
+    post({ type: 'error', id, stage: 'analyze', message: errMsg(err) });
   } finally {
     bitmap.close();
     cancelled.delete(id);

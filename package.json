@@ -1,7 +1,7 @@
 {
   "name": "my-ai-wardrobe",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "fetch-models": "node tools/fetch-models.mjs",
     "copy-wasm": "node tools/copy-litert-wasm.mjs",
-    "postinstall": "node tools/copy-litert-wasm.mjs"
+    "postinstall": "node tools/copy-litert-wasm.mjs",
+    "test": "vitest run",
+    "e2e": "node tests/e2e/fetch-photos.mjs && node tests/e2e/run.mjs"
   },
   "dependencies": {
     "@litertjs/core": "2.6.0",
@@ -23,9 +25,11 @@
     "@types/react-dom": "19.2.2",
     "@vitejs/plugin-react": "5.1.0",
     "@webgpu/types": "0.1.66",
+    "playwright": "1.63.0",
     "typescript": "5.9.3",
     "vite": "7.1.12",
     "vite-plugin-pwa": "1.1.0",
+    "vitest": "3.2.4",
     "workbox-window": "7.3.0"
   }
 }

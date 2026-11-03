@@ -38,7 +38,7 @@ export interface Garment {
   favorite: 0 | 1;
 }
 
-export type ImageKind = 'garment-original' | 'garment-cutout' | 'person' | 'tryon' | 'thumbnail';
+export type ImageKind = 'garment-original' | 'garment-cutout' | 'person' | 'person-mask' | 'tryon' | 'thumbnail';
 export interface StoredImage {
   id: string;
   kind: ImageKind;
@@ -50,7 +50,19 @@ export interface StoredImage {
   createdAt: number;
 }
 
-export interface PersonPhoto { id: string; imageId: string; name: string; createdAt: number }
+export interface PersonPhoto {
+  id: string;
+  imageId: string;
+  thumbImageId: string;
+  /** 人體遮罩 PNG（覆蓋 analysis.maskRect 區域） */
+  maskImageId: string | null;
+  name: string;
+  analysis: import('../ai/body').BodyAnalysis | null;
+  /** 使用者是否手動校正過關鍵點 */
+  corrected: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
 export interface TryOnResult { id: string; personId: string; garmentIds: string[]; imageId: string; createdAt: number }
 export interface Outfit { id: string; name: string; garmentIds: string[]; tags: string[]; createdAt: number; favorite: 0 | 1 }
 export interface HistoryEntry { id: string; type: 'tryon' | 'recommend'; refId: string; createdAt: number }

@@ -212,3 +212,16 @@ a.btn { text-decoration: none; }
 .pre { white-space: pre-wrap; }
 .backup-ready { background: #fff; border-radius: 14px; padding: 12px; margin-top: 10px; }
 .backup-ready p { margin: 0; font-size: 14px; word-break: break-all; }
+
+/* ===== Phase 3：人體辨識 ===== */
+.layer-chips { padding-top: 12px; padding-bottom: 6px; }
+.checks { list-style: none; padding: 6px 16px; }
+.checks li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; padding: 8px 0; }
+.checks li + li { border-top: 1px solid var(--line); }
+.checks li > span { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; margin-top: 1px; }
+.check-ok > span { background: var(--ok); } .check-info > span { background: #64748b; }
+.check-warn > span { background: #d97706; } .check-error > span { background: var(--err); }
+.specs.tight { margin: 4px 0 8px; gap: 8px 12px; font-size: 14px; grid-template-columns: 80px 1fr; }
+.link-btn.danger { color: var(--err); }
+.stage-busy .btn-small { margin-left: 8px; }
+a.garment-card { text-decoration: none; display: block; }

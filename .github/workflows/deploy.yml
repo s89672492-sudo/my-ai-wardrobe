@@ -20,6 +20,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm test
       # 模型不提交到 Git，於建置時從 Google 官方固定版本網址下載並驗證 SHA-256
       - run: npm run fetch-models
       - run: npm run build

@@ -4,14 +4,17 @@ import { useEffect, useState } from 'react';
 export type Route =
   | { name: 'home' } | { name: 'wardrobe' } | { name: 'garment-new' }
   | { name: 'garment'; id: string } | { name: 'garment-edit'; id: string }
-  | { name: 'tryon' } | { name: 'outfits' } | { name: 'settings' } | { name: 'diagnostics' };
+  | { name: 'tryon' } | { name: 'person-new' } | { name: 'person'; id: string } | { name: 'outfits' } | { name: 'settings' } | { name: 'diagnostics' };
 
-export type Path = '/' | '/wardrobe' | '/wardrobe/new' | `/wardrobe/item/${string}` | '/tryon' | '/outfits' | '/settings' | '/settings/diagnostics';
+export type Path = '/' | '/wardrobe' | '/wardrobe/new' | `/wardrobe/item/${string}` | '/tryon' | '/tryon/person/new' | `/tryon/person/${string}` | '/outfits' | '/settings' | '/settings/diagnostics';
 
 function parse(): Route {
   const h = decodeURIComponent(location.hash.replace(/^#/, '')) || '/';
   const m = h.match(/^\/wardrobe\/item\/([\w-]+)(\/edit)?$/);
   if (m) return m[2] ? { name: 'garment-edit', id: m[1]! } : { name: 'garment', id: m[1]! };
+  if (h === '/tryon/person/new') return { name: 'person-new' };
+  const pm = h.match(/^\/tryon\/person\/([\w-]+)$/);
+  if (pm) return { name: 'person', id: pm[1]! };
   switch (h) {
     case '/wardrobe': return { name: 'wardrobe' };
     case '/wardrobe/new': return { name: 'garment-new' };

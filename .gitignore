@@ -8,3 +8,7 @@ public/litert-wasm/
 *.heic
 *.webp
 !public/icons/*
+
+# E2E 測試照片（執行時下載，不提交）
+tests/e2e/.photos/
+tests/e2e/.out/
