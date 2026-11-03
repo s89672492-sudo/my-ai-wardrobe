@@ -74,8 +74,11 @@ export async function detectDevice(): Promise<DeviceReport> {
 function supportsModuleWorker(): boolean {
   let supports = false;
   try {
-    const w = new Worker('data:,', { get type() { supports = true; return 'module' as const; } });
+    // 用 blob: URL（CSP 允許），不用 data:
+    const url = URL.createObjectURL(new Blob([''], { type: 'text/javascript' }));
+    const w = new Worker(url, { get type() { supports = true; return 'module' as const; } });
     w.terminate();
+    URL.revokeObjectURL(url);
   } catch { /* ignore */ }
   return supports;
 }
