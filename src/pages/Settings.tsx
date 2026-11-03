@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Badge, ListLink, PageHeader } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { AIClient } from '../ai/client';
-import { MODEL_URLS, WASM_PATH, modelsCached } from '../ai/assets';
+import { CUTOUT_MODEL_URL, MODEL_URLS, WASM_PATH, modelsCached } from '../ai/assets';
+import { exportBackup, importBackup, saveFile } from '../lib/backup';
 import { clearAllData } from '../lib/db';
 import { formatMB, getStorageInfo, isStandalone, requestPersist, useOnline, type StorageInfo } from '../lib/platform';
 import { useSettings } from '../lib/settings';
@@ -21,6 +22,8 @@ export function Settings() {
   const [storage, setStorage] = useState<StorageInfo | null>(null);
   const [cached, setCached] = useState<boolean | null>(null);
   const [dl, setDl] = useState<string | null>(null);
+  const [backup, setBackup] = useState<string | null>(null);
+  const [backupFile, setBackupFile] = useState<File | null>(null);
   const [msg, setMsg] = useState<{ text: string; tone: 'ok' | 'err' } | null>(null);
 
   const refresh = () => { void getStorageInfo().then(setStorage); void modelsCached().then(setCached); };
@@ -30,7 +33,7 @@ export function Settings() {
     const c = new AIClient();
     setDl('準備中');
     try {
-      const r = await c.init(WASM_PATH, 'wasm', MODEL_URLS, setDl);
+      const r = await c.init(WASM_PATH, 'wasm', { ...MODEL_URLS, magicTouch: CUTOUT_MODEL_URL }, setDl);
       if (r.type === 'ready' && r.models.every((m) => m.ok)) setMsg({ text: 'AI 模型已下載，之後可離線使用。', tone: 'ok' });
       else setMsg({ text: 'AI 模型下載不完整，請確認網路後再試一次。', tone: 'err' });
     } catch (e) {
@@ -48,12 +51,34 @@ export function Settings() {
     refresh();
   }
 
+  async function doExport() {
+    setDl(null);
+    setBackup('準備備份');
+    try {
+      // 分享面板必須由使用者直接點擊觸發，所以先產生檔案，再讓使用者點「儲存備份檔」
+      setBackupFile(await exportBackup(setBackup));
+    } catch (e) {
+      setMsg({ text: `匯出失敗：${(e as Error).message}`, tone: 'err' });
+    } finally { setBackup(null); refresh(); }
+  }
+
+  async function doImport(file: File | undefined) {
+    if (!file) return;
+    setBackup('匯入中');
+    try {
+      const r = await importBackup(file, setBackup);
+      setMsg({ text: `匯入完成：新增 ${r.added.garments ?? 0} 件衣服、${r.images} 張圖片${r.skipped ? `，略過 ${r.skipped} 筆已存在的資料` : ''}。`, tone: 'ok' });
+    } catch (e) {
+      setMsg({ text: `匯入失敗：${(e as Error).message}`, tone: 'err' });
+    } finally { setBackup(null); refresh(); }
+  }
+
   async function wipe() {
-    if (!confirm('確定要刪除所有衣服、照片、試穿結果與設定嗎？此動作無法復原。')) return;
+    if (!confirm('確定要刪除所有衣服、照片、試穿結果與設定嗎？此動作無法復原。（已下載的 AI 模型會保留）')) return;
     if (!confirm('再確認一次：所有資料將永久刪除。建議先匯出備份。')) return;
     try {
+      // 只刪個人資料；公開的 AI 模型快取保留，避免重新下載
       await clearAllData();
-      if ('caches' in self) for (const k of await caches.keys()) if (k.startsWith('ai-')) await caches.delete(k);
       location.reload();
     } catch (e) {
       setMsg({ text: `清除失敗：${(e as Error).message}`, tone: 'err' });
@@ -88,7 +113,7 @@ export function Settings() {
           <span>離線使用</span>
           {cached === null ? null : cached ? <Badge tone="ok">已下載</Badge> : <Badge tone="warn">尚未下載</Badge>}
         </div>
-        <p className="muted">模型約 5 MB、執行環境約 3 MB，下載一次後在手機上執行。瀏覽器仍可能在空間不足時清除快取，屆時會自動重新下載。</p>
+        <p className="muted">人體辨識模型約 5 MB、去背模型約 6 MB、執行環境約 3 MB，下載一次後在手機上執行。瀏覽器仍可能在空間不足時清除快取，屆時會自動重新下載。</p>
         <button className="btn" disabled={!!dl || !online} onClick={() => void downloadModels()}>
           {dl ? `⏳ ${dl}` : !online ? '目前離線，無法下載' : cached ? '重新下載 AI 模型' : '下載 AI 模型'}
         </button>
@@ -112,7 +137,17 @@ export function Settings() {
 
       <h3 className="section-title">資料管理</h3>
       <div className="card">
-        <p className="muted">完整匯出與匯入備份將於 Phase 2（衣服）與 Phase 7（全部資料）開放。</p>
+        <p className="muted">資料只存在這支手機。瀏覽器可能在空間不足時清除資料，請定期匯出備份。備份檔包含所有衣服與照片，請妥善保管。</p>
+        <button className="btn" disabled={!!backup} onClick={() => void doExport()}><Icon name="share" size={18} /> {backup ?? '匯出備份'}</button>
+        {backupFile && (
+          <div className="backup-ready">
+            <p>備份檔已產生：{backupFile.name}（{(backupFile.size / 1048576).toFixed(1)} MB）</p>
+            <button className="btn btn-primary" onClick={() => { void saveFile(backupFile).then(() => setMsg({ text: '請確認備份檔已存到「檔案」或雲端硬碟。', tone: 'ok' })); }}>儲存備份檔</button>
+          </div>
+        )}
+        <label className={`btn ${backup ? 'disabled' : ''}`}><Icon name="upload" size={18} /> 匯入備份
+          <input type="file" accept=".zip,application/zip" hidden disabled={!!backup} onChange={(e) => { void doImport(e.target.files?.[0]); e.target.value = ''; }} />
+        </label>
         <button className="btn btn-danger" onClick={() => void wipe()}><Icon name="trash" size={18} /> 清除所有資料</button>
       </div>
 

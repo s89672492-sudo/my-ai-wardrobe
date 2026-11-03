@@ -1,12 +1,26 @@
 /** 極簡 hash 路由：GitHub Pages 重新整理任何頁面都不會 404。 */
 import { useEffect, useState } from 'react';
 
-export type Route = '/' | '/wardrobe' | '/tryon' | '/outfits' | '/settings' | '/settings/diagnostics';
-const ROUTES: Route[] = ['/', '/wardrobe', '/tryon', '/outfits', '/settings', '/settings/diagnostics'];
+export type Route =
+  | { name: 'home' } | { name: 'wardrobe' } | { name: 'garment-new' }
+  | { name: 'garment'; id: string } | { name: 'garment-edit'; id: string }
+  | { name: 'tryon' } | { name: 'outfits' } | { name: 'settings' } | { name: 'diagnostics' };
+
+export type Path = '/' | '/wardrobe' | '/wardrobe/new' | `/wardrobe/item/${string}` | '/tryon' | '/outfits' | '/settings' | '/settings/diagnostics';
 
 function parse(): Route {
-  const h = location.hash.replace(/^#/, '') || '/';
-  return (ROUTES as string[]).includes(h) ? (h as Route) : '/';
+  const h = decodeURIComponent(location.hash.replace(/^#/, '')) || '/';
+  const m = h.match(/^\/wardrobe\/item\/([\w-]+)(\/edit)?$/);
+  if (m) return m[2] ? { name: 'garment-edit', id: m[1]! } : { name: 'garment', id: m[1]! };
+  switch (h) {
+    case '/wardrobe': return { name: 'wardrobe' };
+    case '/wardrobe/new': return { name: 'garment-new' };
+    case '/tryon': return { name: 'tryon' };
+    case '/outfits': return { name: 'outfits' };
+    case '/settings': return { name: 'settings' };
+    case '/settings/diagnostics': return { name: 'diagnostics' };
+    default: return { name: 'home' };
+  }
 }
 
 export function useRoute(): Route {
@@ -19,5 +33,8 @@ export function useRoute(): Route {
   return r;
 }
 
-export function navigate(to: Route) { location.hash = to; }
-export const href = (to: Route) => `#${to}`;
+export function navigate(to: Path, replace = false) {
+  if (replace) location.replace(`#${to}`);
+  else location.hash = to;
+}
+export const href = (to: Path) => `#${to}`;

@@ -16,6 +16,7 @@ const models: Partial<Record<ModelName, LoadedModel>> = {};
 let backend: Accelerator = 'wasm';
 let runtimeLoaded = false;
 const cancelled = new Set<number>();
+const MODEL_LABEL: Record<ModelName, string> = { pose: '人體姿勢 MoveNet', segmenter: '人體分割 Selfie Segmenter', magicTouch: 'AI 去背 MagicTouch' };
 
 let cacheName = 'ai-assets';
 /** 已預先從 Cache Storage 取出的 glue 腳本（importScripts 是同步的，無法等待 Cache API） */
@@ -60,6 +61,7 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
   switch (msg.type) {
     case 'init': void init(msg); break;
     case 'process': void processFrame(msg); break;
+    case 'cutout': void cutout(msg); break;
     case 'cancel': cancelled.add(msg.targetId); break;
     case 'dispose': dispose(msg.id); break;
   }
@@ -109,7 +111,7 @@ async function init(msg: Extract<WorkerRequest, { type: 'init' }>) {
     stage = 'models';
     const infos: ModelLoadInfo[] = [];
     for (const [name, url] of Object.entries(msg.models) as [ModelName, string][]) {
-      post({ type: 'progress', id: msg.id, stage: `載入模型：${name === 'pose' ? '人體姿勢 MoveNet' : '人體分割 Selfie Segmenter'}` });
+      post({ type: 'progress', id: msg.id, stage: `載入模型：${MODEL_LABEL[name]}` });
       const m0 = performance.now();
       try {
         models[name]?.model.delete();
@@ -126,7 +128,8 @@ async function init(msg: Extract<WorkerRequest, { type: 'init' }>) {
         }
         const inp = model.getInputDetails()[0];
         const out = model.getOutputDetails()[0];
-        if (!inp || inp.shape.length !== 4 || inp.shape[3] !== 3) throw new Error(`模型輸入格式不符 [${inp?.shape}]`);
+        const channels = name === 'magicTouch' ? 4 : 3;
+        if (!inp || inp.shape.length !== 4 || inp.shape[3] !== channels) throw new Error(`模型輸入格式不符 [${inp?.shape}]`);
         models[name] = { model, h: inp.shape[1]!, w: inp.shape[2]!, dtype: String(inp.dtype) };
         infos.push({ name, ok: true, ms: performance.now() - m0, input: `${inp.dtype}[${inp.shape}]`, output: `${out?.dtype}[${out?.shape}]` });
       } catch (err) {
@@ -166,6 +169,59 @@ async function processFrame(msg: Extract<WorkerRequest, { type: 'process' }>) {
     post({ type: 'result', id, keypoints, mask, timings }, mask ? [mask.bitmap] : []);
   } catch (err) {
     post({ type: 'error', id, stage: 'process', message: errMsg(err) });
+  } finally {
+    bitmap.close();
+    cancelled.delete(id);
+  }
+}
+
+/**
+ * MediaPipe MagicTouch：輸入 [1,512,512,4]，RGB 0~1，第 4 通道為點選位置
+ * （半徑 10px 的圓，1=點選處，0=其他）。編碼方式以合成測試圖對照真實遮罩驗證（IoU≈0.98）。
+ */
+async function cutout(msg: Extract<WorkerRequest, { type: 'cutout' }>) {
+  const { bitmap, id, points } = msg;
+  try {
+    const m = models.magicTouch;
+    if (!m) throw new Error('去背模型尚未載入');
+    const t0 = performance.now();
+    const c = new OffscreenCanvas(m.w, m.h);
+    const ctx = c.getContext('2d', { willReadFrequently: true })!;
+    ctx.drawImage(bitmap, 0, 0, m.w, m.h); // 與 MediaPipe 相同：直接縮放（不 letterbox）
+    const rgba = ctx.getImageData(0, 0, m.w, m.h).data;
+    const n = m.w * m.h;
+    const base = new Float32Array(n * 4);
+    for (let i = 0; i < n; i++) { base[i * 4] = rgba[i * 4]! / 255; base[i * 4 + 1] = rgba[i * 4 + 1]! / 255; base[i * 4 + 2] = rgba[i * 4 + 2]! / 255; }
+    const acc = new Float32Array(n);
+    const R = 10;
+    for (const p of points.length ? points : [{ x: 0.5, y: 0.5 }]) {
+      if (cancelled.has(id)) return post({ type: 'cancelled', id });
+      post({ type: 'progress', id, stage: 'AI 去背中' });
+      const f = base.slice();
+      const cx = p.x * m.w, cy = p.y * m.h;
+      for (let y = Math.max(0, Math.floor(cy - R)); y <= Math.min(m.h - 1, Math.ceil(cy + R)); y++)
+        for (let x = Math.max(0, Math.floor(cx - R)); x <= Math.min(m.w - 1, Math.ceil(cx + R)); x++)
+          if ((x - cx) ** 2 + (y - cy) ** 2 <= R * R) f[(y * m.w + x) * 4 + 3] = 1;
+      const input = new Tensor(f, [1, m.h, m.w, 4]);
+      let outs: Tensor[];
+      try { outs = await m.model.run([input]); } finally { input.delete(); }
+      try {
+        const raw = (await outs[0]!.data()) as Float32Array;
+        for (let i = 0; i < n; i++) if (raw[i]! > acc[i]!) acc[i] = raw[i]!;
+      } finally { outs.forEach((t) => t.delete()); }
+    }
+    // 輸出白色 + alpha 的遮罩；邊緣以 smoothstep 收斂，保留柔和邊
+    const px = new Uint8ClampedArray(n * 4);
+    for (let i = 0; i < n; i++) {
+      const t = Math.min(1, Math.max(0, (acc[i]! - 0.3) / 0.4));
+      px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = 255;
+      px[i * 4 + 3] = Math.round(t * t * (3 - 2 * t) * 255);
+    }
+    ctx.putImageData(new ImageData(px, m.w, m.h), 0, 0);
+    const mask = await createImageBitmap(c);
+    post({ type: 'cutoutResult', id, mask, ms: performance.now() - t0 }, [mask]);
+  } catch (err) {
+    post({ type: 'error', id, stage: 'cutout', message: errMsg(err) });
   } finally {
     bitmap.close();
     cancelled.delete(id);

@@ -30,6 +30,8 @@ export interface Garment {
   notes: string;
   originalImageId: string;
   cutoutImageId: string | null;
+  /** 列表用縮圖 */
+  thumbImageId: string;
   createdAt: number;
   updatedAt: number;
   /** IndexedDB 無法索引 boolean，以 0/1 儲存 */

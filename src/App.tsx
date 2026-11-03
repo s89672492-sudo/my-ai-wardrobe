@@ -11,6 +11,8 @@ import { Outfits } from './pages/Outfits';
 import { Settings } from './pages/Settings';
 import { TryOn } from './pages/TryOn';
 import { Wardrobe } from './pages/Wardrobe';
+import { GarmentDetail } from './pages/GarmentDetail';
+import { GarmentEditor } from './pages/GarmentEditor';
 
 // 技術檢測頁較大，延遲載入
 void cleanupOldAICaches();
@@ -26,12 +28,15 @@ export default function App() {
     <SettingsProvider>
       {!online && <div className="offline-bar"><Icon name="wifiOff" size={16} /> 目前離線，衣櫥與已下載的 AI 仍可使用</div>}
       <main className="app-main">
-        {route === '/' && <Home />}
-        {route === '/wardrobe' && <Wardrobe />}
-        {route === '/tryon' && <TryOn />}
-        {route === '/outfits' && <Outfits />}
-        {route === '/settings' && <Settings />}
-        {route === '/settings/diagnostics' && <Suspense fallback={<p className="page muted">載入中…</p>}><Diagnostics /></Suspense>}
+        {route.name === 'home' && <Home />}
+        {route.name === 'wardrobe' && <Wardrobe />}
+        {route.name === 'garment-new' && <GarmentEditor key="new" />}
+        {route.name === 'garment' && <GarmentDetail key={route.id} id={route.id} />}
+        {route.name === 'garment-edit' && <GarmentEditor key={`edit-${route.id}`} id={route.id} />}
+        {route.name === 'tryon' && <TryOn />}
+        {route.name === 'outfits' && <Outfits />}
+        {route.name === 'settings' && <Settings />}
+        {route.name === 'diagnostics' && <Suspense fallback={<p className="page muted">載入中…</p>}><Diagnostics /></Suspense>}
       </main>
       {needRefresh && (
         <div className="toast" role="status">
@@ -39,7 +44,7 @@ export default function App() {
           <button className="btn btn-small btn-primary" onClick={() => void updateServiceWorker(true)}>更新</button>
         </div>
       )}
-      <BottomNav route={route} />
+      {!['garment-new', 'garment-edit'].includes(route.name) && <BottomNav route={route} />}
     </SettingsProvider>
   );
 }

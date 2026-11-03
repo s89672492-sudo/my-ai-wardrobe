@@ -6,4 +6,5 @@
 - `@litertjs/core` — Apache-2.0
 - MoveNet SinglePose Lightning（Google）— Apache-2.0
 - MediaPipe Selfie Segmenter（Google）— Apache-2.0
-- React、Vite — MIT
+- MediaPipe Interactive Segmenter / MagicTouch（Google）— Apache-2.0（衣服 AI 去背）
+- React、Vite、vite-plugin-pwa、fflate — MIT；idb — ISC

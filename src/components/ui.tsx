@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
-import { href, type Route } from '../lib/router';
+import { href, type Path } from '../lib/router';
 import { Icon, type IconName } from './Icon';
 
-export function PageHeader({ title, subtitle, back, right }: { title: string; subtitle?: string; back?: Route; right?: ReactNode }) {
+export function PageHeader({ title, subtitle, back, right }: { title: string; subtitle?: string; back?: Path; right?: ReactNode }) {
   return (
     <header className="page-header">
       {back && <a className="back" href={href(back)} aria-label="返回"><Icon name="back" /></a>}
@@ -26,7 +26,7 @@ export function EmptyState({ icon, title, children, action }: { icon: IconName; 
   );
 }
 
-export function ListLink({ to, icon, title, detail }: { to: Route; icon: IconName; title: string; detail?: string }) {
+export function ListLink({ to, icon, title, detail }: { to: Path; icon: IconName; title: string; detail?: string }) {
   return (
     <a className="list-row" href={href(to)}>
       <Icon name={icon} size={22} />

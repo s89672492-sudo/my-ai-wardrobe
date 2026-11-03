@@ -15,7 +15,7 @@ export class AIClient {
     w.onmessage = (e: MessageEvent<WorkerResponse>) => {
       const msg = e.data;
       const p = this.pending.get(msg.id);
-      if (!p) { if (msg.type === 'result') msg.mask?.bitmap.close(); return; }
+      if (!p) { if (msg.type === 'result') msg.mask?.bitmap.close(); if (msg.type === 'cutoutResult') msg.mask.close(); return; }
       if (msg.type === 'progress') { p.onProgress?.(msg.stage); return; }
       this.pending.delete(msg.id);
       if (msg.type === 'error') p.reject(new Error(msg.message));
@@ -48,6 +48,10 @@ export class AIClient {
 
   process(bitmap: ImageBitmap, tasks: ModelName[], onProgress?: (s: string) => void) {
     return this.send({ type: 'process', bitmap, tasks } as WorkerRequest, [bitmap], onProgress);
+  }
+
+  cutout(bitmap: ImageBitmap, points: { x: number; y: number }[], onProgress?: (s: string) => void) {
+    return this.send({ type: 'cutout', bitmap, points } as WorkerRequest, [bitmap], onProgress);
   }
 
   cancel(targetId: number) {

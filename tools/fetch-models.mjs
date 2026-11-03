@@ -21,6 +21,12 @@ const MODELS = [
     url: 'https://tfhub.dev/google/lite-model/movenet/singlepose/lightning/tflite/float16/4?lite-format=tflite',
     sha256: '0fac2226112d0371903ca86e3853cec24ef603a0b2f96f589b180f0ebdd135ab', // 2026-11-03 CI 首次下載鎖定
   },
+  {
+    file: 'magic_touch.tflite',
+    // MediaPipe Interactive Segmenter（MagicTouch）float32 版本 1，Apache-2.0；衣服 AI 去背
+    url: 'https://storage.googleapis.com/mediapipe-models/interactive_segmenter/magic_touch/float32/1/magic_touch.tflite',
+    sha256: 'e24338a717c1b7ad8d159666677ef400babb7f33b8ad60c4d96db4ecf694cd25',
+  },
 ];
 
 const outDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public', 'models');
