@@ -197,11 +197,12 @@ export function Diagnostics() {
 
       <section className="card">
         <h2>1. 裝置能力</h2>
+        <p className="muted">「—」代表此瀏覽器沒有該加速功能，App 會自動改用其他方式，功能不受影響。</p>
         {!device ? <p>偵測中…</p> : (
           <dl>
             <Row k="系統" v={device.isIOS ? 'iOS / iPadOS' : device.isAndroid ? 'Android' : device.platform} />
             <Row k="WebGPU API" v={yn(device.webgpuApi)} />
-            <Row k="WebGPU 轉接器" v={{ ok: '✅ 可用', none: '❌ 無可用 GPU', error: `❌ ${device.webgpuError}`, 'n/a': '—' }[device.webgpuAdapter]} />
+            <Row k="WebGPU 轉接器" v={{ ok: '✅ 可用', none: '— 無（使用 CPU）', error: `— 無法使用（使用 CPU）`, 'n/a': '—' }[device.webgpuAdapter]} />
             {device.webgpuInfo && <Row k="GPU" v={device.webgpuInfo} />}
             {device.maxBufferMB && <Row k="GPU 最大緩衝" v={`${device.maxBufferMB.toFixed(0)} MB`} />}
             <Row k="記憶體 (deviceMemory)" v={device.deviceMemoryGB ? `${device.deviceMemoryGB} GB` : '瀏覽器未提供'} />
@@ -211,10 +212,10 @@ export function Diagnostics() {
             <Row k="OffscreenCanvas" v={yn(device.offscreenCanvas)} />
             <Row k="IndexedDB" v={yn(device.indexedDB)} />
             <Row k="Service Worker" v={yn(device.serviceWorker)} />
-            <Row k="跨來源隔離 (多執行緒)" v={device.crossOriginIsolated ? '✅' : '❌（GitHub Pages 預設無法啟用）'} />
+            <Row k="多執行緒加速" v={device.crossOriginIsolated ? '✅' : '— 未啟用（GitHub Pages 限制，不影響使用）'} />
             <Row k="儲存空間" v={device.storageQuotaMB ? `已用 ${device.storageUsageMB!.toFixed(1)} / 配額 ${device.storageQuotaMB.toFixed(0)} MB` : '瀏覽器未提供'} />
             <Row k="永久儲存" v={device.storagePersisted ? '✅ 已授權' : '未授權（瀏覽器可能清除）'} />
-            <Row k="已安裝為 App" v={yn(device.standalone)} />
+            <Row k="已安裝為 App" v={device.standalone ? '✅' : '尚未（建議加入主畫面）'} />
           </dl>
         )}
       </section>
@@ -237,8 +238,8 @@ export function Diagnostics() {
         {ready && (
           <dl>
             <Row k="實際後端" v={ready.backend === 'webgpu' ? '⚡ WebGPU' : '🧮 WASM CPU'} />
-            <Row k="JSPI" v={yn(ready.jspi)} />
-            <Row k="Relaxed SIMD" v={yn(ready.relaxedSimd)} />
+            <Row k="JSPI（GPU 加速需要）" v={ready.jspi ? '✅' : '— 不支援（已改用 CPU，正常）'} />
+            <Row k="Relaxed SIMD" v={ready.relaxedSimd ? '✅' : '— 不支援（已改用相容版，正常）'} />
             <Row k="執行環境載入" v={`${ready.runtimeMs.toFixed(0)} ms`} />
             {ready.models.map((m) => <Row key={m.name} k={modelZh(m)} v={m.ok ? `✅ ${m.ms.toFixed(0)} ms` : `❌ ${friendly(m.error)}`} />)}
           </dl>
