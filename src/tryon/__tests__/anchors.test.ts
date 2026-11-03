@@ -96,6 +96,18 @@ describe('correspondences', () => {
     expect(b.dst[1]![0] - b.dst[0]![0]).toBeCloseTo((a.dst[1]![0] - a.dst[0]![0]) * 1.2, 3);
     expect((b.dst[0]![0] + b.dst[1]![0]) / 2).toBeCloseTo((a.dst[0]![0] + a.dst[1]![0]) / 2 + 10, 3);
   });
+  it('上衣過長時限制在大腿中段以上', () => {
+    const tall = shape(400, 1400, (x, y) => inRect(x, y, 120, 30, 280, 1380));
+    const c = correspondences(detectAnchors(tall, 400, 1400, 'top')!, body);
+    expect(c.dst[4]![1]).toBeLessThan(260 + 300 * 1.75);
+    expect(c.notes.some((n) => /過長/.test(n))).toBe(true);
+  });
+  it('手臂平舉而長袖下垂時不強拉袖子', () => {
+    const spread = analyzeBody(frontal({ left_elbow: [520, 270], left_wrist: [660, 275], right_elbow: [80, 270], right_wrist: [-60, 275] }), 600, 1200, null);
+    const c = correspondences(detectAnchors(LONG, 400, 400, 'top')!, spread);
+    expect(c.labels.includes('袖口')).toBe(false);
+    expect(c.notes.some((n) => /手臂角度/.test(n))).toBe(true);
+  });
   it('手肘大幅彎曲時不強制對齊長袖', () => {
     const bent = analyzeBody(frontal({ left_elbow: [440, 400], left_wrist: [360, 330] }), 600, 1200, null);
     const c = correspondences(detectAnchors(LONG, 400, 400, 'top')!, bent);

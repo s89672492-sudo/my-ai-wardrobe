@@ -124,7 +124,21 @@ function upper(g: UpperAnchors, B: Body, notes: string[]): Omit<Correspondence, 
   push(g.shoulderR, add(top, B.across, shHalf), '肩');
   const [wl, wr] = pair(g.waistL, g.waistR);
   push(g.waistL, wl, '腰'); push(g.waistR, wr, '腰');
-  const [hl, hr] = pair(g.hemL, g.hemR, g.kind === 'dress');
+  let [hl, hr] = pair(g.hemL, g.hemR, g.kind === 'dress');
+  // 上衣／外套長度上限（臀線以下約 0.7／0.9 個軀幹長）。衣服照片斜拍、折起、方向不對時，
+  // 依照片比例算出的衣長可能長到腳踝，這時限制長度並提示
+  const maxT = g.kind === 'top' ? 1.7 : g.kind === 'outer' ? 1.9 : Infinity;
+  const hemT = tOf((g.hemL[1] + g.hemR[1]) / 2);
+  if (hemT > maxT) {
+    const k = (maxT * B.torso - lift) / ((hemT * B.torso) - lift);
+    const shrink = (p: Pt): Pt => add(top, { x: p.x - top.x, y: p.y - top.y }, k);
+    // 只沿身體軸向縮短
+    const fix = (p: Pt): Pt => { const q = shrink(p); const dx = p.x - q.x, dy = p.y - q.y; const along = dx * B.down.x + dy * B.down.y; return { x: p.x - B.down.x * along, y: p.y - B.down.y * along }; };
+    hl = fix(hl); hr = fix(hr);
+    const [wl2, wr2] = [fix(wl), fix(wr)];
+    dst[2] = p2(wl2); dst[3] = p2(wr2);
+    notes.push('依衣服照片比例算出的衣長過長（可能是照片斜拍、折起或方向不對），已自動限制長度；可用「長度」滑桿微調');
+  }
   push(g.hemL, hl, '下襬'); push(g.hemR, hr, '下襬');
 
   // 袖子
@@ -142,6 +156,12 @@ function upper(g: UpperAnchors, B: Body, notes: string[]): Omit<Correspondence, 
           const cos = (u.x * v.x + u.y * v.y) / ((Math.hypot(u.x, u.y) * Math.hypot(v.x, v.y)) || 1);
           if (cos > -0.5) { notes.push('手肘彎曲較大，長袖無法完全貼合手臂'); continue; }
         }
+      }
+      if (g.sleeve === 'long') {
+        // 衣服照片的袖子方向與手臂方向差太多（例如手臂平舉、袖子下垂）時不強拉，避免整件衣服扭曲
+        const gv = { x: gCuff[0] - gSh[0], y: gCuff[1] - gSh[1] }, bv = { x: el.x - sh.x, y: el.y - sh.y };
+        const c = (gv.x * bv.x + gv.y * bv.y) / ((Math.hypot(gv.x, gv.y) * Math.hypot(bv.x, bv.y)) || 1);
+        if (c < Math.cos((55 * Math.PI) / 180)) { notes.push('手臂角度和衣服照片中的袖子差太多（例如手臂張開或舉起），長袖維持原形'); continue; }
       }
       const path = okW && g.sleeve === 'long' ? [sh, el, wr] : [sh, el];
       const outward = side === 'L' ? -1 : 1;
