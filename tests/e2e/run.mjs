@@ -126,6 +126,7 @@ try {
   await page.click('button:has-text("儲存試穿")');
   await page.waitForSelector('button:has-text("已儲存")');
   await page.goto(BASE + '#/outfits');
+  await page.click('button[role=tab]:has-text("試穿紀錄")');
   await page.waitForSelector('.garment-card');
   ok((await page.locator('.garment-card').count()) === 1, 'saved try-on appears in history');
 
