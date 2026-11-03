@@ -1,0 +1,209 @@
+/**
+ * AI 推論 Worker：持有 LiteRT.js runtime 與模型，避免阻塞 UI。
+ * Wasm 載入 shim 與 accelerator 判斷改寫自 pravoobi/try-on
+ * packages/litert-react/src/worker.ts（MIT）；模型前處理改寫自
+ * packages/tryon-core/src/pose.ts / segmenter.ts（MIT），
+ * 但不使用 tfjs，兩個模型都走 LiteRT 原生 Tensor，減少下載量。
+ */
+import { isWebGPUSupported, loadAndCompile, loadLiteRt, supportsFeature, Tensor, type CompiledModel } from '@litertjs/core';
+import { computeLetterbox, unletterboxPoint } from './letterbox';
+import { KEYPOINT_NAMES, type Accelerator, type Keypoint, type ModelLoadInfo, type ModelName, type WorkerRequest, type WorkerResponse } from './protocol';
+
+const post = (msg: WorkerResponse, transfer: Transferable[] = []) => (self as unknown as Worker).postMessage(msg, transfer);
+
+interface LoadedModel { model: CompiledModel; h: number; w: number; dtype: string }
+const models: Partial<Record<ModelName, LoadedModel>> = {};
+let backend: Accelerator = 'wasm';
+let runtimeLoaded = false;
+const cancelled = new Set<number>();
+
+// LiteRT.js 以 importScripts 載入 wasm glue，但 module worker 沒有此函式 → 同步 XHR + eval 的 shim
+function installImportScriptsShim() {
+  (self as unknown as { importScripts: (...u: string[]) => void }).importScripts = (...urls: string[]) => {
+    for (const url of urls) {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', url, false);
+      xhr.send();
+      if (xhr.status < 200 || xhr.status >= 300) throw new Error(`無法下載 AI 執行環境（HTTP ${xhr.status}）`);
+      (0, eval)(xhr.responseText);
+    }
+  };
+}
+
+self.onmessage = (e: MessageEvent<WorkerRequest>) => {
+  const msg = e.data;
+  switch (msg.type) {
+    case 'init': void init(msg); break;
+    case 'process': void processFrame(msg); break;
+    case 'cancel': cancelled.add(msg.targetId); break;
+    case 'dispose': dispose(msg.id); break;
+  }
+};
+
+async function init(msg: Extract<WorkerRequest, { type: 'init' }>) {
+  const t0 = performance.now();
+  let stage = 'runtime';
+  try {
+    const relaxedSimd = await supportsFeature('relaxedSimd');
+    const jspi = await supportsFeature('jspi');
+    let fallbackReason: string | undefined;
+    if (!runtimeLoaded) {
+      installImportScriptsShim();
+      (self as unknown as { Module: unknown }).Module = { locateFile: (f: string) => msg.wasmPath + f };
+      post({ type: 'progress', id: msg.id, stage: '載入 AI 執行環境（Wasm）' });
+      // WebGPU 推論在 LiteRT.js 需要 JSPI 版本的 wasm；不支援就用一般 CPU 版本
+      await loadLiteRt(msg.wasmPath, { jspi: msg.accelerator === 'webgpu' && jspi });
+      runtimeLoaded = true;
+    }
+    const runtimeMs = performance.now() - t0;
+    backend = 'wasm';
+    if (msg.accelerator === 'webgpu') {
+      if (!isWebGPUSupported()) fallbackReason = '此瀏覽器不支援 WebGPU';
+      else if (!jspi) fallbackReason = '此瀏覽器不支援 JSPI（LiteRT.js WebGPU 需要）';
+      else backend = 'webgpu';
+    }
+    stage = 'models';
+    const infos: ModelLoadInfo[] = [];
+    for (const [name, url] of Object.entries(msg.models) as [ModelName, string][]) {
+      post({ type: 'progress', id: msg.id, stage: `載入模型：${name === 'pose' ? '人體姿勢 MoveNet' : '人體分割 Selfie Segmenter'}` });
+      const m0 = performance.now();
+      try {
+        models[name]?.model.delete();
+        const bytes = await fetchModel(url);
+        let model: CompiledModel;
+        try {
+          model = await loadAndCompile(bytes, { accelerator: backend });
+        } catch (gpuErr) {
+          if (backend !== 'webgpu') throw gpuErr;
+          // WebGPU 編譯失敗 → 自動退回 CPU
+          fallbackReason = `WebGPU 編譯模型失敗，改用 CPU：${errMsg(gpuErr)}`;
+          backend = 'wasm';
+          model = await loadAndCompile(bytes, { accelerator: 'wasm' });
+        }
+        const inp = model.getInputDetails()[0];
+        const out = model.getOutputDetails()[0];
+        if (!inp || inp.shape.length !== 4 || inp.shape[3] !== 3) throw new Error(`模型輸入格式不符 [${inp?.shape}]`);
+        models[name] = { model, h: inp.shape[1]!, w: inp.shape[2]!, dtype: String(inp.dtype) };
+        infos.push({ name, ok: true, ms: performance.now() - m0, input: `${inp.dtype}[${inp.shape}]`, output: `${out?.dtype}[${out?.shape}]` });
+      } catch (err) {
+        delete models[name];
+        infos.push({ name, ok: false, ms: performance.now() - m0, error: errMsg(err) });
+      }
+    }
+    post({ type: 'ready', id: msg.id, backend, requested: msg.accelerator, jspi, relaxedSimd, runtimeMs, models: infos, fallbackReason });
+  } catch (err) {
+    post({ type: 'error', id: msg.id, stage, message: errMsg(err) });
+  }
+}
+
+async function processFrame(msg: Extract<WorkerRequest, { type: 'process' }>) {
+  const { bitmap, id } = msg;
+  const t0 = performance.now();
+  try {
+    const timings: { poseMs?: number; segmentMs?: number; totalMs: number } = { totalMs: 0 };
+    let keypoints: Keypoint[] | undefined;
+    let mask: { bitmap: ImageBitmap; width: number; height: number } | undefined;
+    if (msg.tasks.includes('pose')) {
+      if (cancelled.has(id)) return post({ type: 'cancelled', id });
+      post({ type: 'progress', id, stage: '偵測人體姿勢' });
+      const p0 = performance.now();
+      keypoints = await runPose(bitmap);
+      timings.poseMs = performance.now() - p0;
+    }
+    if (msg.tasks.includes('segmenter')) {
+      if (cancelled.has(id)) return post({ type: 'cancelled', id });
+      post({ type: 'progress', id, stage: '分割人體輪廓' });
+      const s0 = performance.now();
+      mask = await runSegmenter(bitmap);
+      timings.segmentMs = performance.now() - s0;
+    }
+    if (cancelled.has(id)) { mask?.bitmap.close(); return post({ type: 'cancelled', id }); }
+    timings.totalMs = performance.now() - t0;
+    post({ type: 'result', id, keypoints, mask, timings }, mask ? [mask.bitmap] : []);
+  } catch (err) {
+    post({ type: 'error', id, stage: 'process', message: errMsg(err) });
+  } finally {
+    bitmap.close();
+    cancelled.delete(id);
+  }
+}
+
+function readPixels(src: ImageBitmap, w: number, h: number) {
+  const lb = computeLetterbox(src.width, src.height, w, h);
+  const c = new OffscreenCanvas(w, h);
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  if (!ctx) throw new Error('裝置不支援 OffscreenCanvas 2D');
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(src, lb.dx, lb.dy, lb.scaledW, lb.scaledH);
+  return { lb, rgba: ctx.getImageData(0, 0, w, h).data };
+}
+
+async function runPose(src: ImageBitmap): Promise<Keypoint[]> {
+  const m = models.pose;
+  if (!m) throw new Error('姿勢模型尚未載入');
+  const { lb, rgba } = readPixels(src, m.w, m.h);
+  const n = m.w * m.h;
+  const rgb = m.dtype === 'uint8' ? new Uint8Array(n * 3) : m.dtype === 'int32' ? new Int32Array(n * 3) : new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { rgb[i * 3] = rgba[i * 4]!; rgb[i * 3 + 1] = rgba[i * 4 + 1]!; rgb[i * 3 + 2] = rgba[i * 4 + 2]!; }
+  const input = new Tensor(rgb, [1, m.h, m.w, 3]);
+  let outs: Tensor[];
+  try { outs = await m.model.run([input]); } finally { input.delete(); }
+  try {
+    const data = (await outs[0]!.data()) as Float32Array;
+    return KEYPOINT_NAMES.map((name, i) => {
+      const p = unletterboxPoint(data[i * 3 + 1]! * m.w, data[i * 3]! * m.h, lb);
+      return { name, x: p.x, y: p.y, score: data[i * 3 + 2]! };
+    });
+  } finally { outs.forEach((t) => t.delete()); }
+}
+
+async function runSegmenter(src: ImageBitmap) {
+  const m = models.segmenter;
+  if (!m) throw new Error('分割模型尚未載入');
+  const { lb, rgba } = readPixels(src, m.w, m.h);
+  const n = m.w * m.h;
+  const f = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { f[i * 3] = rgba[i * 4]! / 255; f[i * 3 + 1] = rgba[i * 4 + 1]! / 255; f[i * 3 + 2] = rgba[i * 4 + 2]! / 255; }
+  const input = new Tensor(f, [1, m.h, m.w, 3]);
+  let outs: Tensor[];
+  try { outs = await m.model.run([input]); } finally { input.delete(); }
+  try {
+    const out = outs[0]!;
+    const shape = Array.from(out.shape);
+    const ch = shape.length === 4 ? shape[3]! : 1;
+    const raw = (await out.data()) as Float32Array;
+    const px = new Uint8ClampedArray(n * 4);
+    let min = Infinity, max = -Infinity;
+    for (let i = 0; i < n; i++) { const v = raw[i * ch + ch - 1]!; if (v < min) min = v; if (v > max) max = v; }
+    const logits = min < -0.001 || max > 1.001;
+    for (let i = 0; i < n; i++) {
+      let v = raw[i * ch + ch - 1]!;
+      if (logits) v = 1 / (1 + Math.exp(-v));
+      px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = 255;
+      px[i * 4 + 3] = Math.round(v * 255);
+    }
+    const c = new OffscreenCanvas(m.w, m.h);
+    c.getContext('2d')!.putImageData(new ImageData(px, m.w, m.h), 0, 0);
+    const bitmap = await createImageBitmap(c, lb.dx, lb.dy, lb.scaledW, lb.scaledH);
+    return { bitmap, width: lb.scaledW, height: lb.scaledH };
+  } finally { outs.forEach((t) => t.delete()); }
+}
+
+/** 下載並驗證 .tflite（檔頭第 4~7 位元組為 "TFL3"），避免把 404 頁面當模型載入。 */
+async function fetchModel(url: string): Promise<Uint8Array> {
+  let res: Response;
+  try { res = await fetch(url); } catch { throw new Error('模型下載失敗：網路無法連線'); }
+  if (!res.ok) throw new Error(`模型檔案不存在或無法下載（HTTP ${res.status}）`);
+  const buf = new Uint8Array(await res.arrayBuffer());
+  const magic = String.fromCharCode(...buf.subarray(4, 8));
+  if (magic !== 'TFL3') throw new Error(`下載到的不是 TFLite 模型（${(buf.length / 1024).toFixed(0)} KB，可能是模型尚未部署）`);
+  return buf;
+}
+
+function dispose(id: number) {
+  for (const k of Object.keys(models) as ModelName[]) { models[k]?.model.delete(); delete models[k]; }
+  post({ type: 'disposed', id });
+}
+
+function errMsg(e: unknown) { return e instanceof Error ? e.message : String(e); }

@@ -1,0 +1,27 @@
+:root { --bg: #fff; --fg: #111; --card: #f3f3f3; --muted: #777; --line: #e3e3e3; color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); -webkit-text-size-adjust: 100%; }
+main { max-width: 560px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom)); }
+header h1 { font-size: 26px; margin: 0; letter-spacing: -0.5px; }
+.sub { margin: 4px 0 0; color: var(--muted); }
+.privacy { font-size: 13px; background: #111; color: #fff; padding: 10px 12px; border-radius: 12px; }
+.card { background: var(--card); border-radius: 18px; padding: 16px; margin: 14px 0; }
+.card h2 { font-size: 17px; margin: 0 0 12px; }
+dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 14px; margin: 12px 0 0; }
+dt { color: var(--muted); } dd { margin: 0; word-break: break-word; }
+label { display: block; font-size: 14px; margin-bottom: 10px; color: var(--muted); }
+select { display: block; width: 100%; margin-top: 4px; padding: 12px; font-size: 16px; border-radius: 12px; border: 1px solid var(--line); background: #fff; color: var(--fg); }
+button, .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 18px; font-size: 16px; border-radius: 14px; border: 1px solid #111; background: #fff; color: #111; flex: 1; cursor: pointer; margin: 0; }
+.primary { background: #111; color: #fff; width: 100%; }
+button:disabled { opacity: 0.35; }
+.row { display: flex; gap: 10px; margin-bottom: 10px; }
+.muted { color: var(--muted); font-size: 13px; }
+.status { font-size: 14px; display: flex; justify-content: space-between; }
+.tick { color: #0a8; font-variant-numeric: tabular-nums; }
+.preview { width: 100%; border-radius: 14px; background: #ddd; display: block; }
+.kp { width: 100%; font-size: 13px; border-collapse: collapse; margin-top: 12px; }
+.kp th, .kp td { text-align: left; padding: 4px; border-bottom: 1px solid var(--line); }
+.kp tr.low { color: #c33; }
+.log { font-size: 12px; padding-left: 18px; max-height: 260px; overflow: auto; }
+.log time { color: var(--muted); }
+.log .ok { color: #0a7a3c; } .log .warn { color: #b26b00; } .log .err { color: #c0262d; }

@@ -1,0 +1,10 @@
+node_modules
+dist
+public/models/*.tflite
+public/litert-wasm/
+# 私人照片絕不提交
+*.jpg
+*.jpeg
+*.heic
+*.webp
+!public/icons/*
