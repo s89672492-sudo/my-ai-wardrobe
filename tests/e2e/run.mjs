@@ -88,6 +88,9 @@ try {
   // 4. 離線重新辨識（模型已快取）
   await ctx.setOffline(true);
   await page.click('.garment-card >> nth=0');
+  await page.waitForURL(/#\/tryon\/studio\//);
+  ok(true, 'person card opens try-on studio');
+  await page.click('a[aria-label="人體辨識結果"]');
   await page.waitForSelector('.specs');
   await page.click('button:has-text("重新辨識")');
   await page.waitForTimeout(300);
