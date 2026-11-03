@@ -38,7 +38,7 @@ export default function App() {
         {route.name === 'tryon' && <TryOn />}
         {route.name === 'person-new' && <PersonPage key="new" />}
         {route.name === 'person' && <PersonPage key={route.id} id={route.id} />}
-        {route.name === 'studio' && <TryOnStudio key={route.personId} personId={route.personId} garmentId={route.garmentId} />}
+        {route.name === 'studio' && <TryOnStudio key={`${route.personId}-${route.outfitId ?? ''}`} personId={route.personId} garmentId={route.garmentId} outfitId={route.outfitId} />}
         {route.name === 'outfits' && <Outfits />}
         {route.name === 'settings' && <Settings />}
         {route.name === 'diagnostics' && <Suspense fallback={<p className="page muted">載入中…</p>}><Diagnostics /></Suspense>}

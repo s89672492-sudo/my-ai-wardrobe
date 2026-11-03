@@ -129,7 +129,46 @@ try {
   await page.waitForSelector('.garment-card');
   ok((await page.locator('.garment-card').count()) === 1, 'saved try-on appears in history');
 
-  // 6. 技術檢測頁兩個模型都能載入
+  // 6. 多件組合：新增長褲（合成圖，淺灰背景，經真實 AI 去背）→ 上衣 + 長褲 → 紮進 → 收藏穿搭 → 從收藏重新載入
+  const pantsPng = await page.evaluate(() => {
+    const c = document.createElement('canvas'); c.width = 600; c.height = 1100; const x = c.getContext('2d');
+    x.fillStyle = '#e8e8e8'; x.fillRect(0, 0, 600, 1100);
+    x.fillStyle = '#2f4a78'; x.beginPath(); x.moveTo(160, 60); x.lineTo(440, 60); x.lineTo(450, 360); x.lineTo(460, 1040); x.lineTo(315, 1040); x.lineTo(300, 340); x.lineTo(285, 1040); x.lineTo(140, 1040); x.lineTo(150, 360); x.closePath(); x.fill();
+    return c.toDataURL('image/png').split(',')[1];
+  });
+  await page.goto(BASE + '#/wardrobe/new');
+  await page.waitForSelector('.pick');
+  await page.locator('input[type=file]:not([capture])').setInputFiles({ name: 'pants.png', mimeType: 'image/png', buffer: Buffer.from(pantsPng, 'base64') });
+  await page.click('button:has-text("下一步：去背")');
+  await page.waitForSelector('.cutout-stage');
+  await idle();
+  await page.click('button:has-text("完成去背")');
+  await page.waitForSelector('.form');
+  await page.click('.chip-grid .chip >> text=長褲');
+  await page.fill('input[placeholder^="例如"]', '測試長褲');
+  await page.click('.sticky-actions >> text=儲存');
+  await page.waitForSelector('.specs');
+  await page.click('button:has-text("試穿這件")');
+  await page.waitForSelector('text=本機合成', { timeout: 60000 });
+  // 加入上衣（第一個非長褲的衣服）
+  await page.locator('.strip-item:not(.on)').first().click();
+  await page.waitForFunction(() => document.querySelectorAll('.layers li').length === 3, null, { timeout: 30000 });
+  ok(true, 'two garments layered (top + pants)');
+  const order = await page.locator('.layers .layer-text small').allInnerTexts();
+  ok(order.join(',') === '上衣,下身', `layer panel order outer→inner: ${order.join(',')}`);
+  await page.click('.option:has-text("上衣紮進") input');
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: path.join(OUT, `${tag}-outfit.png`), fullPage: true });
+  await page.click('button:has-text("收藏穿搭")');
+  await page.waitForSelector('button:has-text("已收藏")', { timeout: 30000 });
+  await page.goto(BASE + '#/outfits');
+  await page.waitForSelector('.garment-card');
+  ok((await page.locator('.garment-card').count()) === 1, 'outfit saved to favourites');
+  await page.click('.garment-card a');
+  await page.waitForFunction(() => document.querySelectorAll('.layers li').length === 3, null, { timeout: 30000 });
+  ok(await page.locator('.option:has-text("上衣紮進") input').isChecked(), 'outfit reloads with layers and tuck option');
+
+  // 7. 技術檢測頁兩個模型都能載入
   await page.goto(BASE + '#/settings/diagnostics');
   await page.waitForSelector('dl');
   await page.selectOption('select >> nth=1', 'wasm');

@@ -68,9 +68,20 @@ export interface TryOnResult {
   id: string; personId: string; garmentIds: string[];
   layers: TryOnLayerRecord[];
   imageId: string; thumbImageId: string;
+  options?: OutfitLayerOptions;
   createdAt: number;
 }
-export interface Outfit { id: string; name: string; garmentIds: string[]; tags: string[]; createdAt: number; favorite: 0 | 1 }
+export interface OutfitLayerOptions { tucked: boolean; openFront: boolean }
+export interface Outfit {
+  id: string; name: string; garmentIds: string[]; tags: string[]; createdAt: number; favorite: 0 | 1;
+  /** 試穿時的圖層選項與每件的調整 */
+  options?: OutfitLayerOptions;
+  layers?: TryOnLayerRecord[];
+  /** 預覽：儲存時的試穿結果 */
+  tryOnId?: string; personId?: string; previewImageId?: string;
+  /** 來源：手動組合或推薦（Phase 6） */
+  source?: 'tryon' | 'recommend';
+}
 export interface HistoryEntry { id: string; type: 'tryon' | 'recommend'; refId: string; createdAt: number }
 
 export type ComputeMode = 'auto' | 'high' | 'balanced' | 'saver';

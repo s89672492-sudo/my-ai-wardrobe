@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 export type Route =
   | { name: 'home' } | { name: 'wardrobe' } | { name: 'garment-new' }
   | { name: 'garment'; id: string } | { name: 'garment-edit'; id: string }
-  | { name: 'tryon' } | { name: 'person-new' } | { name: 'person'; id: string } | { name: 'studio'; personId: string; garmentId?: string } | { name: 'outfits' } | { name: 'settings' } | { name: 'diagnostics' };
+  | { name: 'tryon' } | { name: 'person-new' } | { name: 'person'; id: string } | { name: 'studio'; personId: string; garmentId?: string; outfitId?: string } | { name: 'outfits' } | { name: 'settings' } | { name: 'diagnostics' };
 
 export type Path = '/' | '/wardrobe' | '/wardrobe/new' | `/wardrobe/item/${string}` | '/tryon' | '/tryon/person/new' | `/tryon/person/${string}` | `/tryon/studio/${string}` | '/outfits' | '/settings' | '/settings/diagnostics';
 
@@ -15,6 +15,8 @@ function parse(): Route {
   if (h === '/tryon/person/new') return { name: 'person-new' };
   const pm = h.match(/^\/tryon\/person\/([\w-]+)$/);
   if (pm) return { name: 'person', id: pm[1]! };
+  const om = h.match(/^\/tryon\/studio\/([\w-]+)\/o\/([\w-]+)$/);
+  if (om) return { name: 'studio', personId: om[1]!, outfitId: om[2] };
   const sm = h.match(/^\/tryon\/studio\/([\w-]+)(?:\/([\w-]+))?$/);
   if (sm) return { name: 'studio', personId: sm[1]!, garmentId: sm[2] };
   switch (h) {

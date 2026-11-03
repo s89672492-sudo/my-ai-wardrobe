@@ -8,7 +8,15 @@ import { bodyLine, correspondences, type Adjust } from './bodyTargets';
 import { isUpper, type GarmentAnchors, type TryOnKind } from './garmentAnchors';
 import { drawWarped, TPS, type P2 } from './tps';
 
-export interface Layer { id: string; image: HTMLCanvasElement | ImageBitmap; anchors: GarmentAnchors; adjust: Adjust }
+export interface Layer {
+  id: string; image: HTMLCanvasElement | ImageBitmap; anchors: GarmentAnchors; adjust: Adjust;
+  /** 繪製順序（由 outfit.planLayers 決定）；未指定則依服裝種類 */
+  z?: number;
+  /** 在身體軸向 t 以下裁掉（上衣紮進下身） */
+  cutBelowT?: number | null;
+  /** 外套敞開 */
+  openFront?: boolean;
+}
 export interface ComposeInput {
   photo: HTMLCanvasElement;
   mask: HTMLCanvasElement | null;
@@ -71,6 +79,42 @@ function armOccluder(inp: ComposeInput, kind: TryOnKind, sleeve: 'none' | 'short
   return out;
 }
 
+/** 以身體軸向的一條線切半平面（below = 往身體下方那一側） */
+function halfPlane(x: CanvasRenderingContext2D, line: { p: P2; across: P2 }, side: 'below' | 'above', size: number, op: GlobalCompositeOperation) {
+  const { p, across } = line, f = size * 2, s = side === 'below' ? 1 : -1;
+  // 身體往下的方向 = across 旋轉 +90°
+  const dn: P2 = [-across[1] * s, across[0] * s];
+  x.save();
+  x.globalCompositeOperation = op;
+  x.fillStyle = '#fff';
+  x.beginPath();
+  x.moveTo(p[0] - across[0] * f, p[1] - across[1] * f);
+  x.lineTo(p[0] + across[0] * f, p[1] + across[1] * f);
+  x.lineTo(p[0] + across[0] * f + dn[0] * f, p[1] + across[1] * f + dn[1] * f);
+  x.lineTo(p[0] - across[0] * f + dn[0] * f, p[1] - across[1] * f + dn[1] * f);
+  x.closePath(); x.fill();
+  x.restore();
+}
+
+const openCache = new WeakMap<object, HTMLCanvasElement>();
+/** 外套敞開：在衣服圖上挖掉前襟（由領口往下漸寬的梯形），再進行變形，所以開口會跟著身體 */
+function openFrontImage(img: HTMLCanvasElement | ImageBitmap, g: Extract<GarmentAnchors, { cuffL: unknown }>): HTMLCanvasElement {
+  const hit = openCache.get(img);
+  if (hit) return hit;
+  const c = canvas(img.width, img.height), x = ctx(c);
+  x.drawImage(img, 0, 0);
+  const shW = g.shoulderR[0] - g.shoulderL[0], hemW = g.hemR[0] - g.hemL[0];
+  x.globalCompositeOperation = 'destination-out';
+  x.beginPath();
+  x.moveTo(g.cx - shW * 0.07, 0); x.lineTo(g.cx + shW * 0.07, 0);
+  x.lineTo(g.cx + shW * 0.09, g.shoulderL[1] + (g.hemL[1] - g.shoulderL[1]) * 0.25);
+  x.lineTo(g.cx + hemW * 0.13, img.height); x.lineTo(g.cx - hemW * 0.13, img.height);
+  x.lineTo(g.cx - shW * 0.09, g.shoulderL[1] + (g.hemL[1] - g.shoulderL[1]) * 0.25);
+  x.closePath(); x.fill();
+  openCache.set(img, c);
+  return c;
+}
+
 export function composeTryOn(inp: ComposeInput): ComposeOutput {
   const t0 = performance.now();
   const { photo, analysis } = inp;
@@ -83,7 +127,7 @@ export function composeTryOn(inp: ComposeInput): ComposeOutput {
   const raw = personMask(inp, 0);
   const dilated = personMask(inp, Math.max(2, shW * 0.03));
 
-  const layers = [...inp.layers].sort((a, b) => Z[a.anchors.kind] - Z[b.anchors.kind]);
+  const layers = [...inp.layers].sort((a, b) => (a.z ?? Z[a.anchors.kind]) - (b.z ?? Z[b.anchors.kind]));
   for (const L of layers) {
     const g = L.anchors;
     const corr = correspondences(g, analysis, L.adjust);
@@ -92,35 +136,16 @@ export function composeTryOn(inp: ComposeInput): ComposeOutput {
     try { tps = new TPS(corr.src, corr.dst); } catch (e) { notes.push(`無法變形：${(e as Error).message}`); continue; }
     const layer = canvas(W, H), lx = ctx(layer);
     lx.imageSmoothingQuality = 'high';
-    drawWarped(lx, L.image, tps, inp.draft ? { cols: 8, rows: 12 } : { cols: 18, rows: 26 });
+    drawWarped(lx, L.openFront && 'cuffL' in g ? openFrontImage(L.image, g) : L.image, tps, inp.draft ? { cols: 8, rows: 12 } : { cols: 18, rows: 26 });
 
     // 裁切：衣服只出現在身體範圍；洋裝與裙子的下襬（臀線以下）可以超出腿部
     const clip = canvas(W, H), cx = ctx(clip);
     cx.drawImage(dilated, 0, 0);
-    if (g.kind === 'dress' || g.kind === 'skirt') {
-      const { p, across } = bodyLine(analysis, 0.92);
-      const far = (W + H) * 2;
-      cx.fillStyle = '#fff';
-      cx.beginPath();
-      cx.moveTo(p[0] - across[0] * far, p[1] - across[1] * far);
-      cx.lineTo(p[0] + across[0] * far, p[1] + across[1] * far);
-      cx.lineTo(p[0] + across[0] * far - across[1] * far, p[1] + across[1] * far + across[0] * far);
-      cx.lineTo(p[0] - across[0] * far - across[1] * far, p[1] - across[1] * far + across[0] * far);
-      cx.closePath(); cx.fill();
-    }
+    if (g.kind === 'dress' || g.kind === 'skirt') halfPlane(cx, bodyLine(analysis, 0.92), 'below', W + H, 'source-over');
     // 上衣不畫到肩線上方太高（領子背面會蓋住脖子與下巴）
-    if (isUpper(g.kind)) {
-      const { p, across } = bodyLine(analysis, -0.06);
-      const far = (W + H) * 2;
-      cx.globalCompositeOperation = 'destination-out';
-      cx.beginPath();
-      cx.moveTo(p[0] - across[0] * far, p[1] - across[1] * far);
-      cx.lineTo(p[0] + across[0] * far, p[1] + across[1] * far);
-      cx.lineTo(p[0] + across[0] * far + across[1] * far, p[1] + across[1] * far - across[0] * far);
-      cx.lineTo(p[0] - across[0] * far + across[1] * far, p[1] - across[1] * far - across[0] * far);
-      cx.closePath(); cx.fill();
-      cx.globalCompositeOperation = 'source-over';
-    }
+    if (isUpper(g.kind)) halfPlane(cx, bodyLine(analysis, -0.06), 'above', W + H, 'destination-out');
+    // 上衣紮進下身：腰頭以下裁掉
+    if (L.cutBelowT != null) halfPlane(cx, bodyLine(analysis, L.cutBelowT), 'below', W + H, 'destination-out');
     lx.globalCompositeOperation = 'destination-in';
     lx.drawImage(clip, 0, 0);
 

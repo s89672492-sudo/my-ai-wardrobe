@@ -6,18 +6,23 @@ import { getDB } from '../lib/db';
 import { getImageBlob } from '../lib/garments';
 import { href } from '../lib/router';
 import { deleteTryOn, listTryOns } from '../lib/tryons';
+import { deleteOutfit } from '../lib/outfits';
+import { listGarments } from '../lib/garments';
+import type { Garment } from '../lib/types';
 import type { Outfit, TryOnResult } from '../lib/types';
 import { useImageUrl } from '../lib/useImageUrl';
 
 export function Outfits() {
-  const [tab, setTab] = useState<'saved' | 'history'>('history');
+  const [tab, setTab] = useState<'saved' | 'history'>('saved');
   const [outfits, setOutfits] = useState<Outfit[] | null>(null);
   const [tryons, setTryons] = useState<TryOnResult[] | null>(null);
+  const [garments, setGarments] = useState<Map<string, Garment>>(new Map());
   const [open, setOpen] = useState<TryOnResult | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const load = () => getDB().then(async (db) => {
     setOutfits((await db.getAllFromIndex('outfits', 'byCreatedAt')).reverse());
     setTryons(await listTryOns());
+    setGarments(new Map((await listGarments()).map((g) => [g.id, g])));
   }, (e: Error) => setErr(e.message));
   useEffect(() => { void load(); }, []);
 
@@ -29,7 +34,12 @@ export function Outfits() {
         <button role="tab" aria-selected={tab === 'history'} className={tab === 'history' ? 'on' : ''} onClick={() => setTab('history')}>試穿紀錄{tryons?.length ? ` ${tryons.length}` : ''}</button>
       </div>
       {err && <div className="alert alert-err">{err}</div>}
-      {tab === 'saved' && outfits?.length === 0 && <EmptyState icon="heart" title="還沒有收藏的穿搭">多件組合與 AI 穿搭推薦將於 Phase 5、6 開放。</EmptyState>}
+      {tab === 'saved' && outfits?.length === 0 && <EmptyState icon="heart" title="還沒有收藏的穿搭" action={<a className="btn btn-primary" href={href('/tryon')}>去搭配</a>}>在 AI 試穿頁組合上衣、下身、外套後按「收藏穿搭」。</EmptyState>}
+      {tab === 'saved' && (
+        <div className="grid" style={{ marginTop: 14 }}>
+          {outfits?.map((o) => <OutfitCard key={o.id} o={o} garments={garments} onDelete={async () => { if (confirm(`刪除穿搭「${o.name}」？（衣服本身不會被刪除）`)) { await deleteOutfit(o.id); void load(); } }} />)}
+        </div>
+      )}
       {tab === 'history' && tryons?.length === 0 && (
         <EmptyState icon="sparkle" title="還沒有試穿紀錄" action={<a className="btn btn-primary" href={href('/tryon')}>去試穿</a>}>在 AI 試穿頁按「儲存試穿」後會出現在這裡。</EmptyState>
       )}
@@ -41,6 +51,31 @@ export function Outfits() {
       {open && <Viewer t={open} onClose={() => setOpen(null)} onDeleted={() => { setOpen(null); void load(); }} />}
     </div>
   );
+}
+
+function OutfitCard({ o, garments, onDelete }: { o: Outfit; garments: Map<string, Garment>; onDelete: () => void }) {
+  const url = useImageUrl(o.previewImageId);
+  const items = o.garmentIds.map((id) => garments.get(id));
+  const missing = items.filter((g) => !g).length;
+  const to = o.personId ? `#/tryon/studio/${o.personId}/o/${o.id}` : '#/tryon';
+  return (
+    <div className="garment-card">
+      <a href={to}>
+        <div className="garment-img">{url ? <img src={url} alt="" /> : <MiniStack ids={items.map((g) => g?.thumbImageId)} />}</div>
+        <span className="garment-name">{o.name}</span>
+        <span className="garment-meta">{items.filter(Boolean).map((g) => g!.name).join('、')}{missing ? `（${missing} 件已刪除）` : ''}</span>
+      </a>
+      <button className="fav-btn" aria-label="刪除穿搭" onClick={onDelete}><Icon name="trash" size={18} /></button>
+    </div>
+  );
+}
+
+function MiniStack({ ids }: { ids: (string | undefined)[] }) {
+  return <div className="mini-stack">{ids.slice(0, 4).map((id, i) => <MiniThumb key={i} id={id} />)}</div>;
+}
+function MiniThumb({ id }: { id?: string }) {
+  const url = useImageUrl(id);
+  return url ? <img src={url} alt="" /> : <span />;
 }
 
 function TryOnCard({ t, onOpen }: { t: TryOnResult; onOpen: () => void }) {

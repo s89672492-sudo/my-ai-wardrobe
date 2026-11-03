@@ -9,6 +9,7 @@
 import { MIN_SCORE, WAIST_T, type BodyAnalysis, type Pt } from '../ai/body';
 import type { GarmentAnchors, LowerAnchors, TryOnKind, UpperAnchors } from './garmentAnchors';
 import type { P2 } from './tps';
+import { BAND_T } from './outfit';
 
 export interface Adjust { dx: number; dy: number; scale: number; rotate: number; length: number }
 export const NO_ADJUST: Adjust = { dx: 0, dy: 0, scale: 1, rotate: 0, length: 1 };
@@ -157,7 +158,7 @@ function upper(g: UpperAnchors, B: Body, notes: string[]): Omit<Correspondence, 
 function lower(g: LowerAnchors, B: Body, notes: string[]): Omit<Correspondence, 'origin' | 'down'> & { origin: Pt } {
   const ease = EASE[g.kind];
   // 腰頭位置：褲子約在腰與臀之間偏下，裙子偏高
-  const tBand = g.kind === 'skirt' ? 0.72 : 0.82;
+  const tBand = BAND_T[g.kind];
   const bandC = lerp(B.neck, B.pelvis, tBand);
   const half = Math.max(bodyHalfAt(B, tBand) * ease, 1);
   const s = (half * 2) / Math.max(1, g.bandR[0] - g.bandL[0]);
