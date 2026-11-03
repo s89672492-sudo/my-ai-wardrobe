@@ -4,6 +4,7 @@ import { acceleratorFor } from '../lib/compute';
 import { ctx2d, LIMITS, makeCanvas } from '../lib/image';
 import { useSettings } from '../lib/settings';
 import { Icon } from './Icon';
+import { recordMetric } from '../lib/metrics';
 
 type Tool = 'tap' | 'erase' | 'restore';
 const MAX_UNDO = 6;
@@ -105,6 +106,7 @@ export function CutoutEditor({ source, onDone, onSkip, onBack }: {
       m.close();
       setHasMask(true);
       setLastMs(performance.now() - t0);
+      recordMetric('cutout', performance.now() - t0, `${work.width}×${work.height}`);
     } catch (e) {
       const m = (e as Error).message;
       if (m === '已取消') setError('已取消 AI 去背，可以重新點選衣服或改用筆刷');

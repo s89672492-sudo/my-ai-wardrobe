@@ -80,6 +80,7 @@ export function Settings() {
           {dl ? `⏳ ${dl}` : !online ? '目前離線，無法下載' : cached ? '重新下載 AI 模型' : '下載 AI 模型'}
         </button>
         <ListLink to="/settings/diagnostics" icon="cpu" title="技術檢測" detail="WebGPU、速度、記憶體" />
+        <ListLink to="/settings/acceptance" icon="shield" title="實機驗收" detail="逐項測試並產生報告" />
       </div>
 
       <h3 className="section-title">資料與隱私</h3>

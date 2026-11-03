@@ -1,3 +1,4 @@
+import { recordMetric } from '../lib/metrics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../components/Icon';
 import { EmptyState, PageHeader } from '../components/ui';
@@ -161,6 +162,7 @@ export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { per
       const r = composeTryOn({ photo, mask, analysis: person.analysis, layers, draft, showAnchors: anchorsOn, grid: perf.grid, draftGrid: perf.draftGrid });
       setResult(r);
       setError(null);
+      recordMetric(draft ? 'composeDraft' : 'compose', r.ms, `${layers.length} 件 ${photo.width}×${photo.height}`);
       return r;
     } catch (e) { setError(`合成失敗：${(e as Error).message}`); return null; }
   }, [photo, mask, person, layers, showAnchors, perf]);

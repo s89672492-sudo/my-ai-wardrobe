@@ -211,6 +211,25 @@ try {
   await page.waitForFunction(() => !document.querySelector('.status')?.textContent?.includes('⏳'), null, { timeout: 120000 });
   const log = await page.locator('.log').innerText();
   ok(/MoveNet 載入成功/.test(log) && /Selfie Segmenter 載入成功/.test(log), 'diagnostics: both models load');
+
+  // 實機驗收頁：前面流程的真實耗時應已記錄
+  await page.goto(BASE + '#/settings/acceptance');
+  await page.waitForSelector('.accept-auto');
+  const acc = await page.locator('main').innerText();
+  ok(!/AI 去背（含首次載入模型）\n尚未使用/.test(acc) && !/AI 人體辨識\n尚未使用/.test(acc) && !/試穿合成（完整畫面）\n尚未使用/.test(acc), 'acceptance: on-device timings recorded');
+  ok(/離線功能（Service Worker）\n✅/.test(acc), 'acceptance: SW active shown');
+  await page.locator('.accept-item').first().locator('button:has-text("通過")').click();
+  await page.locator('.accept-item').nth(1).locator('button:has-text("有問題")').click();
+  await page.locator('.accept-item').nth(1).locator('input').fill('測試說明');
+  await page.reload();
+  await page.waitForSelector('.accept-item');
+  ok((await page.locator('.accept-item').first().locator('.chip.on').innerText()) === '通過', 'acceptance: marks persist after reload');
+  await ctx.grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
+  await page.click('button:has-text("複製報告")');
+  await page.waitForTimeout(500);
+  const rep = await page.evaluate(() => navigator.clipboard.readText().catch(() => '')) || await page.locator('#report-text').inputValue();
+  console.log('--- acceptance report\n' + rep);
+  ok(/實機驗收報告/.test(rep) && /✅ 通過 用 Safari 開啟網址/.test(rep) && /說明：測試說明/.test(rep) && /AI 人體辨識：\d+ ms/.test(rep), 'acceptance: report text generated');
 } catch (e) {
   ok(false, `exception: ${e.message.split('\n')[0]}`);
   console.log('  url:', page.url());

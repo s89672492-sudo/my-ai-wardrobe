@@ -1,3 +1,4 @@
+import { recordMetric } from '../lib/metrics';
 import { useEffect, useRef, useState } from 'react';
 import { analyzeBody, type BodyAnalysis, type MaskData } from '../ai/body';
 import { analyzePhoto, cancelAnalyze, ensureBodyModels, releaseBodyModels } from '../ai/body-client';
@@ -70,6 +71,7 @@ export function PersonPage({ id }: { id?: string }) {
       setMask(m);
       setAnalysis(analyzeBody(out.keypoints, c.width, c.height, maskDataOf(m, out.maskRect)));
       setMs(out.ms);
+      recordMetric('analyze', out.ms, `${be === 'webgpu' ? 'WebGPU' : 'CPU'} ${c.width}×${c.height}`);
       setCorrected(false);
       setDirty((d) => ({ ...d, mask: true, analysis: true }));
     } catch (e) {
