@@ -13,19 +13,32 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      base: ${{ steps.base.outputs.path }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+      # 不得提交私人照片、模型權重或大型檔案
+      - run: npm run check-repo
       - run: npm ci
       - run: npm test
       # 模型不提交到 Git，於建置時從 Google 官方固定版本網址下載並驗證 SHA-256
       - run: npm run fetch-models
+      # 專案網站為 /<repo>/；若儲存庫名稱是 <user>.github.io（使用者網站）則為 /
+      - id: base
+        run: |
+          name='${{ github.event.repository.name }}'
+          if [[ "$name" == *.github.io ]]; then echo "path=/" >> "$GITHUB_OUTPUT"; else echo "path=/$name/" >> "$GITHUB_OUTPUT"; fi
       - run: npm run build
         env:
-          BASE_PATH: /${{ github.event.repository.name }}/
+          BASE_PATH: ${{ steps.base.outputs.path }}
+      # 部署前檢查：base path、manifest、Service Worker、模型 SHA-256、沒有私人圖片
+      - run: npm run verify-dist
+        env:
+          BASE_PATH: ${{ steps.base.outputs.path }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
@@ -35,6 +48,25 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+  # 部署後驗收：對線上網站實際檢查（HTTPS、重新整理、深層網址、模型、離線、Service Worker）
+  verify-live:
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/e2e/live-check.mjs
+        env:
+          LIVE_URL: ${{ needs.deploy.outputs.url }}
+          EXPECT_BUILD: ${{ github.sha }}

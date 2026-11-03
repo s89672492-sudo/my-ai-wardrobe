@@ -92,7 +92,7 @@ export function Settings() {
       <h3 className="section-title">關於</h3>
       <div className="card about">
         <p><Icon name="shield" size={16} /> 照片與資料只存在這支手機的瀏覽器資料庫，不上傳任何伺服器，不使用雲端 AI。</p>
-        <p className="muted">版本 {__APP_VERSION__} · 開放原始碼授權見 GitHub 上的 THIRD_PARTY_NOTICES.md</p>
+        <p className="muted">版本 {__APP_VERSION__}（{__BUILD_ID__}）· 開放原始碼授權見 GitHub 上的 THIRD_PARTY_NOTICES.md</p>
       </div>
     </div>
   );

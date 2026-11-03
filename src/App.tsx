@@ -42,12 +42,28 @@ function useBackgroundRelease() {
   }, []);
 }
 
+/**
+ * 主動檢查新版本：加入主畫面的 App 在 iPhone 上可能長時間不重新載入，
+ * 只靠瀏覽器自動檢查常會一直停在舊版。回到 App 時與每小時檢查一次（只抓 sw.js，很小）。
+ */
+function watchForUpdates(_url: string, r: ServiceWorkerRegistration | undefined) {
+  if (!r) return;
+  let last = Date.now();
+  const check = () => {
+    if (!navigator.onLine || r.installing || Date.now() - last < 60_000) return;
+    last = Date.now();
+    void r.update().catch(() => { /* 離線或伺服器暫時無回應，下次再試 */ });
+  };
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
+  setInterval(check, 60 * 60_000);
+}
+
 const Diagnostics = lazy(() => import('./pages/Diagnostics').then((m) => ({ default: m.Diagnostics })));
 
 export default function App() {
   const route = useRoute();
   const online = useOnline();
-  const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW();
+  const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW({ onRegisteredSW: watchForUpdates });
   useBackgroundRelease();
 
   return (

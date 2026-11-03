@@ -3,16 +3,20 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import pkg from './package.json' with { type: 'json' };
 import { cspPlugin } from './vite.csp';
+import { pagesPlugin } from './vite.pages';
 
 // GitHub Pages 專案網址為 /<repo>/；CI 以 BASE_PATH 傳入，本機開發維持 /
 export default defineConfig(({ mode }) => {
   const base = mode === 'production' ? (process.env.BASE_PATH ?? '/my-ai-wardrobe/') : '/';
+  // 建置代號：CI 用 commit SHA，讓手機上可以確認是否已更新到最新部署
+  const build = (process.env.GITHUB_SHA ?? 'local').slice(0, 7);
   return {
     base,
-    define: { __APP_VERSION__: JSON.stringify(pkg.version), __LITERT_VERSION__: JSON.stringify(pkg.dependencies['@litertjs/core']) },
+    define: { __APP_VERSION__: JSON.stringify(pkg.version), __BUILD_ID__: JSON.stringify(build), __LITERT_VERSION__: JSON.stringify(pkg.dependencies['@litertjs/core']) },
     plugins: [
       react(),
       cspPlugin(),
+      pagesPlugin(base, pkg.version, build),
       VitePWA({
         registerType: 'prompt',
         injectRegister: false,
