@@ -237,6 +237,7 @@ export function PersonPage({ id }: { id?: string }) {
               <div className="sticky-actions">
                 <button className="btn btn-primary" disabled={!!busy || (!!id && !unsaved)} onClick={() => void save()}>{busy === '儲存中' ? '儲存中' : id ? (unsaved ? '儲存變更' : '已儲存') : '儲存全身照'}</button>
               </div>
+              {id && !unsaved && <a className="btn btn-primary" href={`#/tryon/studio/${id}`}><Icon name="sparkle" size={18} /> 用這張照片試穿</a>}
               {id && <button className="link-btn danger" onClick={() => void del()}>刪除這張全身照</button>}
             </>
           )}

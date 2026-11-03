@@ -63,7 +63,13 @@ export interface PersonPhoto {
   createdAt: number;
   updatedAt: number;
 }
-export interface TryOnResult { id: string; personId: string; garmentIds: string[]; imageId: string; createdAt: number }
+export interface TryOnLayerRecord { garmentId: string; adjust: { dx: number; dy: number; scale: number; rotate: number; length: number } }
+export interface TryOnResult {
+  id: string; personId: string; garmentIds: string[];
+  layers: TryOnLayerRecord[];
+  imageId: string; thumbImageId: string;
+  createdAt: number;
+}
 export interface Outfit { id: string; name: string; garmentIds: string[]; tags: string[]; createdAt: number; favorite: 0 | 1 }
 export interface HistoryEntry { id: string; type: 'tryon' | 'recommend'; refId: string; createdAt: number }
 

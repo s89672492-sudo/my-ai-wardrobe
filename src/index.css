@@ -225,3 +225,24 @@ a.btn { text-decoration: none; }
 .link-btn.danger { color: var(--err); }
 .stage-busy .btn-small { margin-left: 8px; }
 a.garment-card { text-decoration: none; display: block; }
+
+/* ===== Phase 4：試穿 ===== */
+.segmented.three { grid-template-columns: repeat(3, 1fr); margin-top: 12px; }
+.adjust { margin-top: 10px; }
+.slider { display: grid; grid-template-columns: 40px 1fr 52px; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; }
+.slider input { width: 100%; accent-color: var(--fg); }
+.slider b { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.inline-check { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.inline-check input { width: 20px; height: 20px; accent-color: var(--fg); }
+.garment-strip { display: flex; gap: 10px; overflow-x: auto; padding: 0 16px 6px; margin: 0 -16px 12px; scrollbar-width: none; }
+.garment-strip::-webkit-scrollbar { display: none; }
+.strip-item { flex: none; width: 92px; border: 0; background: none; padding: 0; text-align: left; cursor: pointer; }
+.strip-item img { width: 92px; height: 122px; object-fit: cover; border-radius: 14px; display: block; background: var(--card); border: 2px solid transparent; }
+.strip-item.on img { border-color: var(--fg); }
+.strip-item span { display: block; font-size: 12px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.garment-card.plain { border: 0; background: none; padding: 0; text-align: left; cursor: pointer; }
+.viewer { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.92); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: calc(56px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom)); }
+.viewer img { max-width: 100%; max-height: 72vh; border-radius: 14px; }
+.viewer-close { position: absolute; top: calc(10px + env(safe-area-inset-top)); right: 12px; }
+.viewer-actions { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; width: 100%; max-width: 560px; }
+.viewer-actions .btn-danger { width: 56px; }

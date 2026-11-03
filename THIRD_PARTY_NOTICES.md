@@ -8,3 +8,5 @@
 - MediaPipe Selfie Segmenter（Google）— Apache-2.0
 - MediaPipe Interactive Segmenter / MagicTouch（Google）— Apache-2.0（衣服 AI 去背）
 - React、Vite、vite-plugin-pwa、fflate — MIT；idb — ISC
+- `src/tryon/tps.ts` ← pravoobi/try-on `packages/thin-plate-spline`（MIT）
+- `src/tryon/garmentAnchors.ts` 肩線偵測方法 ← pravoobi/try-on `packages/tryon-core/src/autoAnchor.ts`（MIT）

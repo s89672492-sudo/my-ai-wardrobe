@@ -95,7 +95,38 @@ try {
   ok(!(await page.locator('.alert-err').count()), 'offline re-analysis works');
   await ctx.setOffline(false);
 
-  // 5. 技術檢測頁兩個模型都能載入
+  // 5. 新增衣服（真實 AI 去背）→ 虛擬試穿 → 調整 → 比較 → 儲存
+  await page.goto(BASE + '#/wardrobe/new');
+  await page.waitForSelector('.pick');
+  await page.locator('input[type=file]:not([capture])').setInputFiles(path.join(PHOTOS, 'pollo-collared-tshirt-front.png'));
+  await page.click('button:has-text("下一步：去背")');
+  await page.waitForSelector('.cutout-stage');
+  await idle();
+  await page.click('button:has-text("完成去背")');
+  await page.waitForSelector('.form');
+  await page.click('.chip-grid .chip >> text=T-shirt');
+  await page.click('.sticky-actions >> text=儲存');
+  await page.waitForSelector('.specs');
+  await page.click('button:has-text("試穿這件")');
+  await page.waitForSelector('text=本機合成', { timeout: 60000 });
+  const ms1 = await page.locator('text=本機合成').innerText();
+  ok(!(await page.locator('.alert-err').count()), `try-on composed (${ms1})`);
+  await page.screenshot({ path: path.join(OUT, `${tag}-tryon.png`), fullPage: true });
+  await page.click('button[role=tab]:has-text("手動調整")');
+  await page.locator('.slider input').first().fill('1.15');
+  await page.waitForTimeout(400);
+  ok(/115%/.test(await page.locator('.slider').first().innerText()), 'size slider adjusts');
+  const st = await page.locator('.cutout-stage canvas').boundingBox();
+  await page.mouse.move(st.x + st.width / 2, st.y + st.height * 0.4); await page.mouse.down(); await page.mouse.move(st.x + st.width / 2 + 20, st.y + st.height * 0.4 + 10, { steps: 4 }); await page.mouse.up();
+  await page.click('button[role=tab]:has-text("前後比較")');
+  await page.mouse.click(st.x + st.width * 0.3, st.y + st.height / 2);
+  await page.click('button:has-text("儲存試穿")');
+  await page.waitForSelector('button:has-text("已儲存")');
+  await page.goto(BASE + '#/outfits');
+  await page.waitForSelector('.garment-card');
+  ok((await page.locator('.garment-card').count()) === 1, 'saved try-on appears in history');
+
+  // 6. 技術檢測頁兩個模型都能載入
   await page.goto(BASE + '#/settings/diagnostics');
   await page.waitForSelector('dl');
   await page.selectOption('select >> nth=1', 'wasm');
