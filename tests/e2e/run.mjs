@@ -44,7 +44,7 @@ try {
     if (expect.armFront) ok(/在身體前方/.test(specs), `${file}: arm in front of torso detected`);
     await page.screenshot({ path: path.join(OUT, `${tag}-${file}.png`), fullPage: true });
     await page.click('button:has-text("儲存全身照")');
-    await page.waitForURL(/#\/tryon\/person\/[\w-]+$/);
+    await page.waitForURL(/#\/tryon\/person\/(?!new$)[\w-]+$/, { timeout: 30000 });
     await page.waitForSelector('.checks');
     // 輸出關鍵點，供離線檢查幾何量測
     const dump = await page.evaluate(async () => {
