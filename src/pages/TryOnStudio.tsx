@@ -51,7 +51,7 @@ function loadGarment(g: Garment): Promise<Loaded> {
   return p;
 }
 
-export function TryOnStudio({ personId, garmentId, outfitId }: { personId: string; garmentId?: string; outfitId?: string }) {
+export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { personId: string; garmentId?: string; outfitId?: string; garmentIds?: string[] }) {
   const [person, setPerson] = useState<PersonPhoto | null>(null);
   const [photo, setPhoto] = useState<HTMLCanvasElement | null>(null);
   const [mask, setMask] = useState<HTMLCanvasElement | null>(null);
@@ -118,6 +118,7 @@ export function TryOnStudio({ personId, garmentId, outfitId }: { personId: strin
   useEffect(() => {
     if (!garments) return;
     if (garmentId) { const g = garments.find((x) => x.id === garmentId); if (g) void add(g); }
+    if (garmentIds) void (async () => { for (const id of garmentIds) { const g = garments.find((x) => x.id === id); if (g && KIND_OF[g.category]) await add(g); } })();
     if (outfitId) void (async () => {
       const o = await getOutfit(outfitId);
       if (!o) return setError('找不到這套穿搭');
@@ -130,7 +131,7 @@ export function TryOnStudio({ personId, garmentId, outfitId }: { personId: strin
       }
       if (missing.length) flash(`有 ${missing.length} 件衣服已從衣櫥刪除`);
     })();
-  }, [garments, garmentId, outfitId, add]);
+  }, [garments, garmentId, outfitId, garmentIds, add]);
 
   function remove(slot: Slot) {
     setPicked((p) => { const n = { ...p }; delete n[slot]; return n; });

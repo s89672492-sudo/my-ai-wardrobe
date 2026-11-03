@@ -163,13 +163,31 @@ try {
   await page.click('button:has-text("收藏穿搭")');
   await page.waitForSelector('button:has-text("已收藏")', { timeout: 30000 });
   await page.goto(BASE + '#/outfits');
+  await page.click('button[role=tab]:has-text("收藏穿搭")');
   await page.waitForSelector('.garment-card');
   ok((await page.locator('.garment-card').count()) === 1, 'outfit saved to favourites');
   await page.click('.garment-card a');
   await page.waitForFunction(() => document.querySelectorAll('.layers li').length === 3, null, { timeout: 30000 });
   ok(await page.locator('.option:has-text("上衣紮進") input').isChecked(), 'outfit reloads with layers and tuck option');
 
-  // 7. 技術檢測頁兩個模型都能載入
+  // 7. 穿搭推薦（本機規則引擎）：只用衣櫥裡的衣服 → 收藏 → 試穿
+  await page.goto(BASE + '#/outfits?tab=recommend');
+  await page.reload();
+  await page.waitForSelector('.rec-card');
+  const recText = await page.locator('.rec-card').first().innerText();
+  console.log('  rec:', recText.replace(/\n+/g, ' | '));
+  ok(/測試長褲/.test(recText), 'recommendation uses garments from the wardrobe');
+  await page.locator('.rec-card button:has-text("收藏")').first().click();
+  await page.waitForSelector('.rec-card button:has-text("已收藏")');
+  await page.locator('.rec-card button:has-text("試穿")').first().click();
+  await page.waitForURL(/#\/tryon\/studio\/[\w-]+\/g\//);
+  await page.waitForFunction(() => document.querySelectorAll('.layers li').length >= 3, null, { timeout: 30000 });
+  ok(true, 'recommended outfit opens in try-on studio with all pieces');
+  await page.goto(BASE + '#/');
+  await page.reload();
+  ok(await page.locator('.today').count() === 1, 'home shows today pick');
+
+  // 8. 技術檢測頁兩個模型都能載入
   await page.goto(BASE + '#/settings/diagnostics');
   await page.waitForSelector('dl');
   await page.selectOption('select >> nth=1', 'wasm');

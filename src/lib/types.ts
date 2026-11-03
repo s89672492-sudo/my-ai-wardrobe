@@ -36,6 +36,8 @@ export interface Garment {
   updatedAt: number;
   /** IndexedDB 無法索引 boolean，以 0/1 儲存 */
   favorite: 0 | 1;
+  /** 選填風格標籤（推薦用）：休閒／正式／運動 */
+  styles?: ('casual' | 'formal' | 'sport')[];
 }
 
 export type ImageKind = 'garment-original' | 'garment-cutout' | 'person' | 'person-mask' | 'tryon' | 'thumbnail';

@@ -49,6 +49,16 @@ export function GarmentForm({ value, onChange }: { value: GarmentMeta; onChange:
         </div>
       </div>
 
+      <div className="field">
+        <span>風格 <em>選填，用於穿搭推薦</em></span>
+        <div className="chip-grid three">
+          {([['casual', '休閒'], ['formal', '正式'], ['sport', '運動']] as const).map(([k, l]) => {
+            const on = (value.styles ?? []).includes(k);
+            return <button type="button" key={k} className={on ? 'chip on' : 'chip'} onClick={() => set('styles', on ? (value.styles ?? []).filter((x) => x !== k) : [...(value.styles ?? []), k])}>{l}</button>;
+          })}
+        </div>
+      </div>
+
       <label className="field"><span>備註</span><textarea rows={3} maxLength={300} value={value.notes} placeholder="例如：購買地點、搭配想法" onChange={(e) => set('notes', e.target.value)} /></label>
 
       <label className="option toggle">

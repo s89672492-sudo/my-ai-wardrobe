@@ -50,6 +50,7 @@ export function GarmentDetail({ id }: { id: string }) {
         <dt>品牌</dt><dd>{g.brand || '—'}</dd>
         <dt>尺寸</dt><dd>{g.size || '—'}</dd>
         <dt>季節</dt><dd>{g.seasons.length ? g.seasons.map((s) => SEASON_LABEL[s]).join('、') : '—'}</dd>
+        {g.styles?.length ? <><dt>風格</dt><dd>{g.styles.map((s) => ({ casual: '休閒', formal: '正式', sport: '運動' })[s]).join('、')}</dd></> : null}
         {g.notes && <><dt>備註</dt><dd className="pre">{g.notes}</dd></>}
         <dt>新增於</dt><dd>{new Date(g.createdAt).toLocaleDateString('zh-TW')}</dd>
       </dl>
