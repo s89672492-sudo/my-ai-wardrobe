@@ -19,7 +19,7 @@ const MODELS = [
     file: 'movenet_singlepose_lightning.tflite',
     // MoveNet SinglePose Lightning float16 v4，Apache-2.0（tfhub 會轉址到 Kaggle）
     url: 'https://tfhub.dev/google/lite-model/movenet/singlepose/lightning/tflite/float16/4?lite-format=tflite',
-    sha256: null, // 首次在 CI 成功下載後填入，之後即為鎖定版本
+    sha256: '0fac2226112d0371903ca86e3853cec24ef603a0b2f96f589b180f0ebdd135ab', // 2026-11-03 CI 首次下載鎖定
   },
 ];
 
