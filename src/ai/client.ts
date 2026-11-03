@@ -1,4 +1,5 @@
 /** 主執行緒端的 AI Worker 客戶端：請求/回應配對、取消、釋放。 */
+import { AI_CACHE_NAME } from './assets';
 import type { Accelerator, ModelName, WorkerRequest, WorkerResponse } from './protocol';
 
 type Pending = { resolve: (r: WorkerResponse) => void; reject: (e: Error) => void; onProgress?: (s: string) => void };
@@ -42,7 +43,7 @@ export class AIClient {
   }
 
   init(wasmPath: string, accelerator: Accelerator, models: Partial<Record<ModelName, string>>, onProgress?: (s: string) => void) {
-    return this.send({ type: 'init', wasmPath, accelerator, models } as WorkerRequest, [], onProgress).promise;
+    return this.send({ type: 'init', wasmPath, cacheName: AI_CACHE_NAME, accelerator, models } as WorkerRequest, [], onProgress).promise;
   }
 
   process(bitmap: ImageBitmap, tasks: ModelName[], onProgress?: (s: string) => void) {

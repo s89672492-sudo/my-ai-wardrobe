@@ -17,10 +17,35 @@ let backend: Accelerator = 'wasm';
 let runtimeLoaded = false;
 const cancelled = new Set<number>();
 
-// LiteRT.js 以 importScripts 載入 wasm glue，但 module worker 沒有此函式 → 同步 XHR + eval 的 shim
+let cacheName = 'ai-assets';
+/** 已預先從 Cache Storage 取出的 glue 腳本（importScripts 是同步的，無法等待 Cache API） */
+const prefetchedScripts = new Map<string, string>();
+
+/**
+ * 先查 Cache Storage，沒有才從網路下載並存入快取。
+ * 由 Worker 自己管理快取，不依賴 Service Worker 是否攔截 Worker 內的請求。
+ */
+async function cachedFetch(url: string): Promise<Response> {
+  const abs = new URL(url, self.location.href).href;
+  let cache: Cache | null = null;
+  try { cache = await caches.open(cacheName); } catch { /* 私密瀏覽等情況可能無法使用快取 */ }
+  const hit = await cache?.match(abs);
+  if (hit) return hit;
+  let res: Response;
+  try { res = await fetch(abs); } catch {
+    throw new Error(navigator.onLine ? '網路連線失敗，無法下載 AI 檔案' : '目前離線，且 AI 模型尚未下載到這支手機。請連上網路後到「設定 → 下載 AI 模型」');
+  }
+  if (!res.ok) throw new Error(`AI 檔案不存在或無法下載（HTTP ${res.status}）`);
+  if (cache) { try { await cache.put(abs, res.clone()); } catch { /* 空間不足時仍可繼續執行，只是不能離線 */ } }
+  return res;
+}
+
+// LiteRT.js 以 importScripts 載入 wasm glue，但 module worker 沒有此函式 → 同步 eval 的 shim
 function installImportScriptsShim() {
   (self as unknown as { importScripts: (...u: string[]) => void }).importScripts = (...urls: string[]) => {
     for (const url of urls) {
+      const pre = prefetchedScripts.get(new URL(url, self.location.href).href);
+      if (pre !== undefined) { (0, eval)(pre); continue; }
       const xhr = new XMLHttpRequest();
       xhr.open('GET', url, false);
       xhr.send();
@@ -47,12 +72,31 @@ async function init(msg: Extract<WorkerRequest, { type: 'init' }>) {
     const relaxedSimd = await supportsFeature('relaxedSimd');
     const jspi = await supportsFeature('jspi');
     let fallbackReason: string | undefined;
+    cacheName = msg.cacheName;
     if (!runtimeLoaded) {
-      installImportScriptsShim();
-      (self as unknown as { Module: unknown }).Module = { locateFile: (f: string) => msg.wasmPath + f };
-      post({ type: 'progress', id: msg.id, stage: '載入 AI 執行環境（Wasm）' });
       // WebGPU 推論在 LiteRT.js 需要 JSPI 版本的 wasm；不支援就用一般 CPU 版本
-      await loadLiteRt(msg.wasmPath, { jspi: msg.accelerator === 'webgpu' && jspi });
+      const useJspi = msg.accelerator === 'webgpu' && jspi;
+      // 與 LiteRT.js load() 相同的檔案選擇規則
+      const base = !relaxedSimd ? 'litert_wasm_compat_internal' : useJspi ? 'litert_wasm_jspi_internal' : 'litert_wasm_internal';
+      post({ type: 'progress', id: msg.id, stage: '下載 AI 執行環境（首次約 3 MB）' });
+      const glueUrl = new URL(msg.wasmPath + base + '.js', self.location.href).href;
+      const [glue, wasmBytes] = await Promise.all([
+        cachedFetch(glueUrl).then((r) => r.text()),
+        cachedFetch(msg.wasmPath + base + '.wasm').then((r) => r.arrayBuffer()),
+      ]);
+      prefetchedScripts.set(glueUrl, glue);
+      installImportScriptsShim();
+      (self as unknown as { Module: unknown }).Module = {
+        locateFile: (f: string) => msg.wasmPath + f,
+        // 用快取中的 wasm 位元組實例化，離線也能啟動
+        instantiateWasm(imports: WebAssembly.Imports, done: (i: WebAssembly.Instance) => void) {
+          WebAssembly.instantiate(wasmBytes, imports).then((r) => done(r.instance), (e: unknown) => console.error(e));
+          return {};
+        },
+      };
+      post({ type: 'progress', id: msg.id, stage: '啟動 AI 執行環境' });
+      await loadLiteRt(msg.wasmPath, { jspi: useJspi });
+      prefetchedScripts.clear();
       runtimeLoaded = true;
     }
     const runtimeMs = performance.now() - t0;
@@ -192,12 +236,13 @@ async function runSegmenter(src: ImageBitmap) {
 
 /** 下載並驗證 .tflite（檔頭第 4~7 位元組為 "TFL3"），避免把 404 頁面當模型載入。 */
 async function fetchModel(url: string): Promise<Uint8Array> {
-  let res: Response;
-  try { res = await fetch(url); } catch { throw new Error('模型下載失敗：網路無法連線'); }
-  if (!res.ok) throw new Error(`模型檔案不存在或無法下載（HTTP ${res.status}）`);
-  const buf = new Uint8Array(await res.arrayBuffer());
+  const buf = new Uint8Array(await (await cachedFetch(url)).arrayBuffer());
   const magic = String.fromCharCode(...buf.subarray(4, 8));
-  if (magic !== 'TFL3') throw new Error(`下載到的不是 TFLite 模型（${(buf.length / 1024).toFixed(0)} KB，可能是模型尚未部署）`);
+  if (magic !== 'TFL3') {
+    const abs = new URL(url, self.location.href).href;
+    try { await (await caches.open(cacheName)).delete(abs); } catch { /* ignore */ }
+    throw new Error(`下載到的不是 TFLite 模型（${(buf.length / 1024).toFixed(0)} KB，可能是模型尚未部署）`);
+  }
   return buf;
 }
 

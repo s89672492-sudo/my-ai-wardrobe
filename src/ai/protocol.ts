@@ -5,7 +5,7 @@ export type ModelName = 'segmenter' | 'pose';
 export interface Keypoint { name: string; x: number; y: number; score: number }
 
 export type WorkerRequest =
-  | { type: 'init'; id: number; wasmPath: string; accelerator: Accelerator; models: Partial<Record<ModelName, string>> }
+  | { type: 'init'; id: number; wasmPath: string; cacheName: string; accelerator: Accelerator; models: Partial<Record<ModelName, string>> }
   | { type: 'process'; id: number; bitmap: ImageBitmap; tasks: ModelName[] }
   | { type: 'cancel'; id: number; targetId: number }
   | { type: 'dispose'; id: number };
