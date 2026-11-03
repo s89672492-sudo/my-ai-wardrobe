@@ -1,6 +1,11 @@
 import { lazy, Suspense } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { cleanupOldAICaches } from './ai/assets';
+import { bodyBusy, releaseBodyModels } from './ai/body-client';
+import { cutoutBusy, releaseCutoutModel } from './ai/cutout';
+import { AIStatusPill } from './components/AIStatusPill';
+import { watchBattery } from './lib/compute';
+import { useEffect } from 'react';
 import { BottomNav } from './components/BottomNav';
 import { Icon } from './components/Icon';
 import { useOnline } from './lib/platform';
@@ -19,6 +24,23 @@ import { TryOnStudio } from './pages/TryOnStudio';
 
 // 技術檢測頁較大，延遲載入
 void cleanupOldAICaches();
+watchBattery();
+
+/** App 進入背景 30 秒後，釋放閒置中的 AI 模型記憶體（iPhone 會優先關掉記憶體用量大的背景網頁） */
+function useBackgroundRelease() {
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout> | undefined;
+    const on = () => {
+      clearTimeout(t);
+      if (document.visibilityState === 'hidden') t = setTimeout(() => {
+        if (!cutoutBusy()) void releaseCutoutModel();
+        if (!bodyBusy()) void releaseBodyModels();
+      }, 30_000);
+    };
+    document.addEventListener('visibilitychange', on);
+    return () => { document.removeEventListener('visibilitychange', on); clearTimeout(t); };
+  }, []);
+}
 
 const Diagnostics = lazy(() => import('./pages/Diagnostics').then((m) => ({ default: m.Diagnostics })));
 
@@ -26,10 +48,12 @@ export default function App() {
   const route = useRoute();
   const online = useOnline();
   const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW();
+  useBackgroundRelease();
 
   return (
     <SettingsProvider>
       {!online && <div className="offline-bar"><Icon name="wifiOff" size={16} /> 目前離線，衣櫥與已下載的 AI 仍可使用</div>}
+      <AIStatusPill />
       <main className="app-main">
         {route.name === 'home' && <Home />}
         {route.name === 'wardrobe' && <Wardrobe />}

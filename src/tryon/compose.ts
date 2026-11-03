@@ -24,14 +24,42 @@ export interface ComposeInput {
   layers: Layer[];
   /** 拖曳中用較粗的網格加速 */
   draft?: boolean;
+  /** 依運算模式的網格（未指定用預設） */
+  grid?: { cols: number; rows: number };
+  draftGrid?: { cols: number; rows: number };
   showAnchors?: boolean;
 }
-export interface ComposeOutput { canvas: HTMLCanvasElement; notes: string[]; ms: number; anchors: { id: string; dst: P2[]; labels: string[] }[] }
+export interface ComposeOutput { canvas: HTMLCanvasElement; notes: string[]; ms: number; anchors: { id: string; dst: P2[]; labels: string[] }[]; /** 各階段耗時（ms） */ stages: Record<'mask' | 'warp' | 'clip' | 'occlude' | 'blend', number> }
 
 /** 由下往上的圖層順序（Phase 5 會擴充多件組合） */
 export const Z: Record<TryOnKind, number> = { pants: 10, shorts: 10, skirt: 12, top: 20, dress: 20, outer: 30 };
 
 function canvas(w: number, h: number) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+
+/**
+ * 效能：遮罩、裁切範圍、手臂遮擋只和「人物照片 + 服裝種類」有關，和拖曳位置無關，
+ * 以人體分析物件為 key 快取，拖曳調整時不必每一格重算（實測佔合成時間大半）。
+ * WeakMap：換照片或離開頁面後自動被回收。
+ */
+const staticCache = new WeakMap<object, Map<string, HTMLCanvasElement | null>>();
+function cached(owner: object, key: string, make: () => HTMLCanvasElement | null): HTMLCanvasElement | null {
+  let m = staticCache.get(owner);
+  if (!m) { m = new Map(); staticCache.set(owner, m); }
+  if (!m.has(key)) m.set(key, make());
+  return m.get(key)!;
+}
+
+/** 重複使用的暫存畫布（避免每格配置新的全尺寸畫布；iOS 對畫布總記憶體有上限） */
+const pool: HTMLCanvasElement[] = [];
+function scratch(w: number, h: number) {
+  const c = pool.pop() ?? document.createElement('canvas');
+  if (c.width !== w || c.height !== h) { c.width = w; c.height = h; } else ctx(c).clearRect(0, 0, w, h);
+  const x = ctx(c); x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
+  return c;
+}
+function recycle(c: HTMLCanvasElement) { if (pool.length < 4) pool.push(c); else { c.width = 0; c.height = 0; } }
+/** 釋放暫存畫布記憶體（離開試穿頁時呼叫） */
+export function releaseComposeMemory() { for (const c of pool.splice(0)) { c.width = 0; c.height = 0; } }
 function ctx(c: HTMLCanvasElement) { const x = c.getContext('2d'); if (!x) throw new Error('瀏覽器無法建立繪圖區（記憶體可能不足）'); return x; }
 
 /** 人體遮罩放大到照片尺寸；dilate>0 時向外擴張（讓衣服邊緣貼齊輪廓而不留縫） */
@@ -124,8 +152,14 @@ export function composeTryOn(inp: ComposeInput): ComposeOutput {
   const notes: string[] = [];
   const anchors: ComposeOutput['anchors'] = [];
   const shW = analysis.measures.shoulderWidth;
-  const raw = personMask(inp, 0);
-  const dilated = personMask(inp, Math.max(2, shW * 0.03));
+  const stages = { mask: 0, warp: 0, clip: 0, occlude: 0, blend: 0 };
+  let ts = performance.now();
+  const lap = (k: keyof typeof stages) => { const n = performance.now(); stages[k] += n - ts; ts = n; };
+  const owner = analysis as object;
+  const mk = `${W}x${H}`;
+  const raw = cached(owner, `raw|${mk}`, () => personMask(inp, 0))!;
+  const dilated = cached(owner, `dil|${mk}`, () => personMask(inp, Math.max(2, shW * 0.03)))!;
+  lap('mask');
 
   const layers = [...inp.layers].sort((a, b) => (a.z ?? Z[a.anchors.kind]) - (b.z ?? Z[b.anchors.kind]));
   for (const L of layers) {
@@ -134,26 +168,35 @@ export function composeTryOn(inp: ComposeInput): ComposeOutput {
     notes.push(...corr.notes);
     let tps: TPS;
     try { tps = new TPS(corr.src, corr.dst); } catch (e) { notes.push(`無法變形：${(e as Error).message}`); continue; }
-    const layer = canvas(W, H), lx = ctx(layer);
+    lap('blend');
+    const layer = scratch(W, H), lx = ctx(layer);
     lx.imageSmoothingQuality = 'high';
-    drawWarped(lx, L.openFront && 'cuffL' in g ? openFrontImage(L.image, g) : L.image, tps, inp.draft ? { cols: 8, rows: 12 } : { cols: 18, rows: 26 });
+    drawWarped(lx, L.openFront && 'cuffL' in g ? openFrontImage(L.image, g) : L.image, tps, inp.draft ? (inp.draftGrid ?? { cols: 8, rows: 12 }) : (inp.grid ?? { cols: 18, rows: 26 }));
 
+    lap('warp');
     // 裁切：衣服只出現在身體範圍；洋裝與裙子的下襬（臀線以下）可以超出腿部
-    const clip = canvas(W, H), cx = ctx(clip);
-    cx.drawImage(dilated, 0, 0);
-    if (g.kind === 'dress' || g.kind === 'skirt') halfPlane(cx, bodyLine(analysis, 0.92), 'below', W + H, 'source-over');
-    // 上衣不畫到肩線上方太高（領子背面會蓋住脖子與下巴）
-    if (isUpper(g.kind)) halfPlane(cx, bodyLine(analysis, -0.06), 'above', W + H, 'destination-out');
-    // 上衣紮進下身：腰頭以下裁掉
-    if (L.cutBelowT != null) halfPlane(cx, bodyLine(analysis, L.cutBelowT), 'below', W + H, 'destination-out');
+    const clip = cached(owner, `clip|${mk}|${g.kind}|${L.cutBelowT ?? ''}`, () => {
+      const c = canvas(W, H), cx = ctx(c);
+      cx.drawImage(dilated, 0, 0);
+      if (g.kind === 'dress' || g.kind === 'skirt') halfPlane(cx, bodyLine(analysis, 0.92), 'below', W + H, 'source-over');
+      // 上衣不畫到肩線上方太高（領子背面會蓋住脖子與下巴）
+      if (isUpper(g.kind)) halfPlane(cx, bodyLine(analysis, -0.06), 'above', W + H, 'destination-out');
+      // 上衣紮進下身：腰頭以下裁掉
+      if (L.cutBelowT != null) halfPlane(cx, bodyLine(analysis, L.cutBelowT), 'below', W + H, 'destination-out');
+      return c;
+    })!;
     lx.globalCompositeOperation = 'destination-in';
     lx.drawImage(clip, 0, 0);
 
+    lap('clip');
     // 前景遮擋：在衣服前方的手臂與手
-    const occ = armOccluder(inp, g.kind, 'sleeve' in g ? g.sleeve : 'none', raw);
+    const sleeve = 'sleeve' in g ? g.sleeve : 'none';
+    const occ = cached(owner, `occ|${mk}|${g.kind}|${sleeve}`, () => armOccluder(inp, g.kind, sleeve, raw));
     if (occ) { lx.globalCompositeOperation = 'destination-out'; lx.drawImage(occ, 0, 0); }
     lx.globalCompositeOperation = 'source-over';
+    lap('occlude');
     o.drawImage(layer, 0, 0);
+    recycle(layer);
     anchors.push({ id: L.id, dst: corr.dst, labels: corr.labels });
   }
 
@@ -166,5 +209,6 @@ export function composeTryOn(inp: ComposeInput): ComposeOutput {
       o.fillStyle = '#111'; o.fillText(a.labels[i] ?? '', x + 7 * u, y - 5 * u);
     });
   }
-  return { canvas: out, notes: [...new Set(notes)], ms: performance.now() - t0, anchors };
+  lap('blend');
+  return { canvas: out, notes: [...new Set(notes)], ms: performance.now() - t0, anchors, stages };
 }

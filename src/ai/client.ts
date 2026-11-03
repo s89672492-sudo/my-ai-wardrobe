@@ -4,6 +4,18 @@ import type { Accelerator, Keypoint, ModelName, WorkerRequest, WorkerResponse } 
 
 type Pending = { resolve: (r: WorkerResponse) => void; reject: (e: Error) => void; onProgress?: (s: string) => void };
 
+/** 全域 AI 狀態（給畫面上的狀態提示用） */
+export interface AIStatus { active: number; stage: string | null; since: number }
+let status: AIStatus = { active: 0, stage: null, since: 0 };
+const listeners = new Set<() => void>();
+const emit = (s: AIStatus) => { status = s; listeners.forEach((l) => l()); };
+export const aiStatus = {
+  get: () => status,
+  subscribe: (l: () => void) => { listeners.add(l); return () => { listeners.delete(l); }; },
+};
+function begin(stage: string) { emit({ active: status.active + 1, stage, since: status.active ? status.since : Date.now() }); }
+function end() { const a = Math.max(0, status.active - 1); emit({ active: a, stage: a ? status.stage : null, since: a ? status.since : 0 }); }
+
 export class AIClient {
   private worker: Worker | null = null;
   private nextId = 1;
@@ -16,14 +28,15 @@ export class AIClient {
       const msg = e.data;
       const p = this.pending.get(msg.id);
       if (!p) { if (msg.type === 'result') msg.mask?.bitmap.close(); if (msg.type === 'cutoutResult' || msg.type === 'analyzeResult') msg.mask.close(); return; }
-      if (msg.type === 'progress') { p.onProgress?.(msg.stage); return; }
+      if (msg.type === 'progress') { p.onProgress?.(msg.stage); emit({ ...status, stage: msg.stage }); return; }
       this.pending.delete(msg.id);
+      if (msg.type !== 'disposed') end();
       if (msg.type === 'error') p.reject(new Error(msg.message));
       else p.resolve(msg);
     };
     w.onerror = (e) => {
       const err = new Error(e.message || 'AI 背景程序發生錯誤');
-      this.pending.forEach((p) => p.reject(err));
+      this.pending.forEach((p) => { p.reject(err); end(); });
       this.pending.clear();
     };
     this.worker = w;
@@ -36,6 +49,7 @@ export class AIClient {
     return {
       id,
       promise: new Promise<WorkerResponse>((resolve, reject) => {
+        if (req.type !== 'dispose') begin(req.type === 'init' ? '載入 AI' : 'AI 運算中');
         this.pending.set(id, { resolve, reject, onProgress });
         w.postMessage({ ...req, id }, transfer);
       }),
@@ -58,8 +72,13 @@ export class AIClient {
     return this.send({ type: 'analyze', bitmap, keypointsHint } as WorkerRequest, [bitmap], onProgress);
   }
 
+  /**
+   * 取消：正在進行的單次推論無法中斷，但畫面立即解除等待，Worker 之後送回的結果會被丟棄（並釋放 ImageBitmap）。
+   */
   cancel(targetId: number) {
     this.worker?.postMessage({ type: 'cancel', id: this.nextId++, targetId } satisfies WorkerRequest);
+    const p = this.pending.get(targetId);
+    if (p) { this.pending.delete(targetId); end(); p.resolve({ type: 'cancelled', id: targetId }); }
   }
 
   /** 釋放模型記憶體後終止 Worker（強制回收 wasm heap / GPU 資源）。 */
@@ -70,7 +89,7 @@ export class AIClient {
     } catch { /* ignore */ }
     this.worker.terminate();
     this.worker = null;
-    this.pending.forEach((p) => p.reject(new Error('已取消')));
+    this.pending.forEach((p) => { p.reject(new Error('已取消')); end(); });
     this.pending.clear();
   }
 }

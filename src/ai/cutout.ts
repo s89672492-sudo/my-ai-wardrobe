@@ -5,6 +5,7 @@ import type { Accelerator } from './protocol';
 
 let client: AIClient | null = null;
 let ready: Promise<void> | null = null;
+let currentId: number | null = null;
 
 export function ensureCutoutModel(accelerator: Accelerator, onProgress?: (s: string) => void): Promise<void> {
   client ??= new AIClient();
@@ -18,11 +19,18 @@ export function ensureCutoutModel(accelerator: Accelerator, onProgress?: (s: str
 }
 
 export async function runCutout(bitmap: ImageBitmap, points: { x: number; y: number }[], onProgress?: (s: string) => void): Promise<ImageBitmap> {
-  if (!client) throw new Error('AI 去背尚未啟動');
-  const r = await client.cutout(bitmap, points, onProgress).promise;
-  if (r.type !== 'cutoutResult') throw new Error('去背已取消');
-  return r.mask;
+  if (!client) throw new Error('AI 去背模型已釋放（App 曾在背景），請再點一次衣服');
+  const req = client.cutout(bitmap, points, onProgress);
+  currentId = req.id;
+  try {
+    const r = await req.promise;
+    if (r.type !== 'cutoutResult') throw new Error('已取消');
+    return r.mask;
+  } finally { currentId = null; }
 }
+
+export function cancelCutout() { if (client && currentId !== null) client.cancel(currentId); }
+export const cutoutBusy = () => currentId !== null;
 
 export async function releaseCutoutModel() {
   const c = client;

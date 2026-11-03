@@ -26,6 +26,9 @@ const prefetchedScripts = new Map<string, string>();
  * 先查 Cache Storage，沒有才從網路下載並存入快取。
  * 由 Worker 自己管理快取，不依賴 Service Worker 是否攔截 Worker 內的請求。
  */
+/** 下載進度回報（每 250ms 最多一次） */
+let progressTarget: { id: number; label: string } | null = null;
+
 async function cachedFetch(url: string): Promise<Response> {
   const abs = new URL(url, self.location.href).href;
   let cache: Cache | null = null;
@@ -37,6 +40,20 @@ async function cachedFetch(url: string): Promise<Response> {
     throw new Error(navigator.onLine ? '網路連線失敗，無法下載 AI 檔案' : '目前離線，且 AI 模型尚未下載到這支手機。請連上網路後到「設定 → 下載 AI 模型」');
   }
   if (!res.ok) throw new Error(`AI 檔案不存在或無法下載（HTTP ${res.status}）`);
+  const total = Number(res.headers.get('content-length')) || 0;
+  if (progressTarget && res.body && total > 200_000) {
+    const reader = res.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let got = 0, last = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value); got += value.length;
+      const now = performance.now();
+      if (now - last > 250) { last = now; post({ type: 'progress', id: progressTarget.id, stage: got <= total ? `${progressTarget.label} ${(got / 1048576).toFixed(1)} / ${(total / 1048576).toFixed(1)} MB` : `${progressTarget.label} ${(got / 1048576).toFixed(1)} MB` }); } // gzip 傳輸時 content-length 是壓縮後大小
+    }
+    res = new Response(new Blob(chunks as BlobPart[]), { headers: res.headers });
+  }
   if (cache) { try { await cache.put(abs, res.clone()); } catch { /* 空間不足時仍可繼續執行，只是不能離線 */ } }
   return res;
 }
@@ -76,6 +93,7 @@ async function init(msg: Extract<WorkerRequest, { type: 'init' }>) {
     const jspi = await supportsFeature('jspi');
     let fallbackReason: string | undefined;
     cacheName = msg.cacheName;
+    progressTarget = { id: msg.id, label: '下載 AI 執行環境' };
     if (!runtimeLoaded) {
       // WebGPU 推論在 LiteRT.js 需要 JSPI 版本的 wasm；不支援就用一般 CPU 版本
       const useJspi = msg.accelerator === 'webgpu' && jspi;
@@ -116,6 +134,7 @@ async function init(msg: Extract<WorkerRequest, { type: 'init' }>) {
       const m0 = performance.now();
       try {
         models[name]?.model.delete();
+        progressTarget = { id: msg.id, label: `下載${MODEL_LABEL[name]}` };
         const bytes = await fetchModel(url);
         let model: CompiledModel;
         try {
@@ -138,6 +157,7 @@ async function init(msg: Extract<WorkerRequest, { type: 'init' }>) {
         infos.push({ name, ok: false, ms: performance.now() - m0, error: errMsg(err) });
       }
     }
+    progressTarget = null;
     post({ type: 'ready', id: msg.id, backend, requested: msg.accelerator, jspi, relaxedSimd, runtimeMs, models: infos, fallbackReason });
   } catch (err) {
     post({ type: 'error', id: msg.id, stage, message: errMsg(err) });
@@ -211,6 +231,7 @@ async function cutout(msg: Extract<WorkerRequest, { type: 'cutout' }>) {
         for (let i = 0; i < n; i++) if (raw[i]! > acc[i]!) acc[i] = raw[i]!;
       } finally { outs.forEach((t) => t.delete()); }
     }
+    if (cancelled.has(id)) return post({ type: 'cancelled', id });
     // 輸出白色 + alpha 的遮罩；邊緣以 smoothstep 收斂，保留柔和邊
     const px = new Uint8ClampedArray(n * 4);
     for (let i = 0; i < n; i++) {

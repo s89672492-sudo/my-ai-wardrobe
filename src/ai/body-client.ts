@@ -33,6 +33,8 @@ export async function analyzePhoto(bitmap: ImageBitmap, onProgress?: (s: string)
   } finally { currentId = null; }
 }
 
+export const bodyBusy = () => currentId !== null;
+
 export function cancelAnalyze() { if (client && currentId !== null) client.cancel(currentId); }
 
 export async function releaseBodyModels() {

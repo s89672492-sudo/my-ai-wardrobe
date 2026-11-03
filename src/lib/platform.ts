@@ -1,14 +1,16 @@
 /** 平台相關：安裝提示、離線狀態、儲存空間。 */
 import { useEffect, useState, useSyncExternalStore } from 'react';
 
-export const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+export const isIOS = typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
 export const isStandalone = () => matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
 
 interface BeforeInstallPromptEvent extends Event { prompt(): Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }> }
 let deferred: BeforeInstallPromptEvent | null = null;
 const listeners = new Set<() => void>();
-addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e as BeforeInstallPromptEvent; listeners.forEach((l) => l()); });
-addEventListener('appinstalled', () => { deferred = null; listeners.forEach((l) => l()); });
+if (typeof window !== 'undefined') {
+  addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e as BeforeInstallPromptEvent; listeners.forEach((l) => l()); });
+  addEventListener('appinstalled', () => { deferred = null; listeners.forEach((l) => l()); });
+}
 
 /** Android Chrome 可直接跳出安裝視窗；iOS 只能引導使用者手動加入主畫面。 */
 export function useInstallPrompt() {

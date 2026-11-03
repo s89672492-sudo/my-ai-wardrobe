@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ensureCutoutModel, releaseCutoutModel, runCutout } from '../ai/cutout';
+import { cancelCutout, ensureCutoutModel, releaseCutoutModel, runCutout } from '../ai/cutout';
+import { acceleratorFor } from '../lib/compute';
 import { ctx2d, LIMITS, makeCanvas } from '../lib/image';
 import { useSettings } from '../lib/settings';
 import { Icon } from './Icon';
@@ -92,7 +93,7 @@ export function CutoutEditor({ source, onDone, onSkip, onBack }: {
     setError(null);
     try {
       const t0 = performance.now();
-      await ensureCutoutModel(settings.backend === 'wasm' ? 'wasm' : 'webgpu', (s) => setBusy(s));
+      await ensureCutoutModel(acceleratorFor(settings), (s) => setBusy(s));
       setBusy('AI 去背中');
       const bmp = await createImageBitmap(work);
       const m = await runCutout(bmp, pts, (s) => setBusy(s));
@@ -105,7 +106,9 @@ export function CutoutEditor({ source, onDone, onSkip, onBack }: {
       setHasMask(true);
       setLastMs(performance.now() - t0);
     } catch (e) {
-      setError(`AI 去背失敗：${(e as Error).message}`);
+      const m = (e as Error).message;
+      if (m === '已取消') setError('已取消 AI 去背，可以重新點選衣服或改用筆刷');
+      else setError(`AI 去背失敗：${m}`);
     } finally {
       setBusy(null);
       render();
@@ -175,7 +178,7 @@ export function CutoutEditor({ source, onDone, onSkip, onBack }: {
       <div ref={wrap} className="crop-wrap">
         <div className="cutout-stage checker" style={{ width: work.width * scale, height: work.height * scale }}>
           <canvas ref={view} style={{ width: '100%', height: '100%', touchAction: 'none' }} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} />
-          {busy && <div className="stage-busy"><span className="spinner" />{busy}</div>}
+          {busy && <div className="stage-busy"><span className="spinner" />{busy}{busy.startsWith('AI 去背') && <button className="btn btn-small" onClick={cancelCutout}>取消</button>}</div>}
         </div>
       </div>
       {error && <div className="alert alert-err">{error}</div>}

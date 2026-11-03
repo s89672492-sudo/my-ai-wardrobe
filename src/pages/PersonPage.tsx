@@ -176,7 +176,7 @@ export function PersonPage({ id }: { id?: string }) {
             <li>正面站立，頭到腳都在畫面內</li>
             <li>穿貼身一點的衣服，手臂稍微離開身體</li>
             <li>背景單純、光線均勻，畫面中只有你一個人</li>
-            <li>照片只在這支手機處理（目前：{{ high: '高品質', balanced: '平衡', saver: '省電' }[resolveMode(settings)]}模式，上限 {maxSideFor(settings)}px）</li>
+            <li>照片只在這支手機處理（目前：{{ high: '高品質', balanced: '平衡', saver: '省電' }[resolveMode(settings).mode]}模式，上限 {maxSideFor(settings)}px）</li>
           </ul>
           {busy && <p className="muted center"><span className="spinner" /> {busy}</p>}
         </div>

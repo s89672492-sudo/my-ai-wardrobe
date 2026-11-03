@@ -11,7 +11,9 @@ import { saveTryOn } from '../lib/tryons';
 import type { Garment, PersonPhoto, TryOnLayerRecord } from '../lib/types';
 import { useImageUrl } from '../lib/useImageUrl';
 import { NO_ADJUST, type Adjust } from '../tryon/bodyTargets';
-import { composeTryOn, type Layer } from '../tryon/compose';
+import { composeTryOn, releaseComposeMemory, type Layer } from '../tryon/compose';
+import { perfFor } from '../lib/compute';
+import { useSettings } from '../lib/settings';
 import { detectAnchors, KIND_OF, type GarmentAnchors, type TryOnKind } from '../tryon/garmentAnchors';
 import { DEFAULT_OPTIONS, planLayers, selectInto, SLOT_OF, SLOT_ZH, type OutfitOptions, type Slot } from '../tryon/outfit';
 
@@ -76,6 +78,10 @@ export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { per
   const drag = useRef<{ x: number; y: number; dx: number; dy: number; kind: 'move' | 'split'; slot?: Slot } | null>(null);
   const [dragging, setDragging] = useState(false);
 
+  const { settings } = useSettings();
+  const perf = useMemo(() => perfFor(settings), [settings]);
+  const lastDraft = useRef(0);
+  useEffect(() => () => releaseComposeMemory(), []);
   const flash = (t: string) => { setToast(t); setTimeout(() => setToast((x) => (x === t ? null : x)), 2600); };
   const dirty = () => setSaved({});
 
@@ -152,18 +158,24 @@ export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { per
   const compose = useCallback((draft: boolean, anchorsOn = showAnchors) => {
     if (!photo || !person?.analysis || !layers.length) { setResult(null); return null; }
     try {
-      const r = composeTryOn({ photo, mask, analysis: person.analysis, layers, draft, showAnchors: anchorsOn });
+      const r = composeTryOn({ photo, mask, analysis: person.analysis, layers, draft, showAnchors: anchorsOn, grid: perf.grid, draftGrid: perf.draftGrid });
       setResult(r);
       setError(null);
       return r;
     } catch (e) { setError(`合成失敗：${(e as Error).message}`); return null; }
-  }, [photo, mask, person, layers, showAnchors]);
+  }, [photo, mask, person, layers, showAnchors, perf]);
 
   useEffect(() => {
-    if (dragging) { compose(true); return; }
+    if (dragging) {
+      // 省電模式降低拖曳預覽頻率
+      const wait = perf.draftIntervalMs - (performance.now() - lastDraft.current);
+      if (wait <= 0) { lastDraft.current = performance.now(); compose(true); return; }
+      const t = setTimeout(() => { lastDraft.current = performance.now(); compose(true); }, wait);
+      return () => clearTimeout(t);
+    }
     const t = setTimeout(() => compose(false), 30);
     return () => clearTimeout(t);
-  }, [compose, dragging]);
+  }, [compose, dragging, perf]);
 
   useEffect(() => {
     const el = wrap.current;

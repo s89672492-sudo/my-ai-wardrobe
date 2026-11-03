@@ -5,13 +5,14 @@ import { AIClient } from '../ai/client';
 import { CUTOUT_MODEL_URL, MODEL_URLS, WASM_PATH, modelsCached } from '../ai/assets';
 import { formatMB, getStorageInfo, useOnline, type StorageInfo } from '../lib/platform';
 import { useSettings } from '../lib/settings';
+import { battery, perfFor } from '../lib/compute';
 import type { ComputeMode } from '../lib/types';
 
 const MODES: { id: ComputeMode; title: string; desc: string }[] = [
-  { id: 'auto', title: '自動', desc: '依手機效能自動選擇（建議）' },
-  { id: 'high', title: '高品質', desc: '照片上限 1536px，較耗電與記憶體' },
+  { id: 'auto', title: '自動', desc: '依手機效能與電量自動選擇（建議）' },
+  { id: 'high', title: '高品質', desc: '照片上限 1536px、試穿網格最細，較耗電與記憶體' },
   { id: 'balanced', title: '平衡', desc: '照片上限 1024px，適合大多數手機' },
-  { id: 'saver', title: '省電', desc: '照片上限 640px，適合舊手機或低電量' },
+  { id: 'saver', title: '省電', desc: '照片上限 640px、只用 CPU、降低預覽更新頻率，適合舊手機或低電量' },
 ];
 
 export function Settings() {
@@ -60,6 +61,7 @@ export function Settings() {
           </label>
         ))}
       </div>
+      <p className="muted mode-now">目前實際使用：{({ high: '高品質', balanced: '平衡', saver: '省電' } as const)[perfFor(settings).mode]}（{perfFor(settings).reason}）{battery() ? ` · 電量 ${Math.round(battery()!.level * 100)}%${battery()!.charging ? ' 充電中' : ''}` : ''}</p>
       <div className="card">
         <label className="option toggle">
           <span><b>只使用 CPU 運算</b><small>關閉 WebGPU。iPhone 目前一律使用 CPU；Android 若發熱或出錯可開啟。</small></span>
