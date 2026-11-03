@@ -12,6 +12,15 @@ export const LIMITS = {
 
 export type Canvas = OffscreenCanvas | HTMLCanvasElement;
 
+/** 圖片品質設定：標準／省空間（由設定頁切換，影響之後新增的圖片） */
+export const IMAGE_PROFILES = {
+  standard: { originalMaxSide: 2048, jpegQ: 0.88, tryonQ: 0.9 },
+  compact: { originalMaxSide: 1600, jpegQ: 0.8, tryonQ: 0.82 },
+} as const;
+let profile: keyof typeof IMAGE_PROFILES = 'standard';
+export const setImageProfile = (p: keyof typeof IMAGE_PROFILES) => { profile = p; };
+export const imageProfile = () => IMAGE_PROFILES[profile];
+
 export function makeCanvas(w: number, h: number): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = Math.max(1, Math.round(w));

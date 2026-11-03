@@ -3,6 +3,7 @@ import { Icon } from '../components/Icon';
 import { countAll } from '../lib/db';
 import { isIOS, isStandalone, useInstallPrompt } from '../lib/platform';
 import { href } from '../lib/router';
+import { useSettings } from '../lib/settings';
 import { listGarments } from '../lib/garments';
 import { currentSeason, recommend, type Recommendation } from '../recommend/engine';
 import { useImageUrl } from '../lib/useImageUrl';
@@ -19,6 +20,9 @@ export function Home() {
   const install = useInstallPrompt();
   const standalone = isStandalone();
   const [pick, setPick] = useState<Recommendation | null>(null);
+  const { settings } = useSettings();
+  const backupDays = settings.lastBackupAt ? Math.floor((Date.now() - settings.lastBackupAt) / 86400000) : null;
+  const needBackup = !!counts && counts.garments + counts.persons > 0 && (backupDays === null || backupDays > 14);
   useEffect(() => {
     countAll().then(setCounts, (e: Error) => setErr(e.message));
     // 今日推薦：以日期當亂數種子，同一天看到同一組
@@ -38,6 +42,11 @@ export function Home() {
       </header>
 
       {err && <div className="alert alert-err">{err}</div>}
+      {needBackup && (
+        <a className="alert alert-warn backup-nudge" href={href('/settings/data')}>
+          <Icon name="download" size={18} /> {backupDays === null ? '你的衣櫥資料還沒有備份過' : `上次備份是 ${backupDays} 天前`}，資料只存在這支手機，建議匯出備份 ›
+        </a>
+      )}
 
       <section className="stats">
         <a href={href('/wardrobe')} className="stat"><strong>{counts?.garments ?? '–'}</strong><span>件衣服</span></a>

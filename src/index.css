@@ -286,3 +286,18 @@ a.garment-card { text-decoration: none; display: block; }
 .today-thumb img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 12px; display: block; background: #fff; }
 .today-thumb span { display: block; font-size: 12px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .today p { margin: 0; font-size: 13px; color: var(--muted); }
+
+/* ===== Phase 7：資料與隱私 ===== */
+.privacy-card ul { margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.7; }
+.privacy-card h2 { display: flex; gap: 8px; align-items: center; }
+.meter.warn div { background: var(--err); }
+.usage { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px; }
+.usage td { padding: 7px 2px; border-bottom: 1px solid var(--line); }
+.usage td:nth-child(2), .usage td:nth-child(3) { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.usage tr.total td { font-weight: 600; color: var(--fg); border-bottom: 0; }
+.compact-opts { background: #fff; border-radius: 14px; padding: 2px 12px; margin-top: 10px; }
+.dupes { margin-top: 10px; }
+.dupe-block { background: #fff; border-radius: 12px; padding: 12px; margin-top: 10px; font-size: 14px; }
+.dupe-block ul { margin: 6px 0; padding-left: 18px; }
+.dupe-block .btn-small { margin-top: 6px; }
+.backup-nudge { display: flex; gap: 8px; align-items: center; text-decoration: none; }

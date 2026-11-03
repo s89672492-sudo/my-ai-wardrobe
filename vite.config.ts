@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import pkg from './package.json' with { type: 'json' };
+import { cspPlugin } from './vite.csp';
 
 // GitHub Pages 專案網址為 /<repo>/；CI 以 BASE_PATH 傳入，本機開發維持 /
 export default defineConfig(({ mode }) => {
@@ -11,6 +12,7 @@ export default defineConfig(({ mode }) => {
     define: { __APP_VERSION__: JSON.stringify(pkg.version), __LITERT_VERSION__: JSON.stringify(pkg.dependencies['@litertjs/core']) },
     plugins: [
       react(),
+      cspPlugin(),
       VitePWA({
         registerType: 'prompt',
         injectRegister: false,

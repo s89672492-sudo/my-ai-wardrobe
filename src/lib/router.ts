@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 export type Route =
   | { name: 'home' } | { name: 'wardrobe' } | { name: 'garment-new' }
   | { name: 'garment'; id: string } | { name: 'garment-edit'; id: string }
-  | { name: 'tryon' } | { name: 'person-new' } | { name: 'person'; id: string } | { name: 'studio'; personId: string; garmentId?: string; outfitId?: string; garmentIds?: string[] } | { name: 'outfits' } | { name: 'settings' } | { name: 'diagnostics' };
+  | { name: 'tryon' } | { name: 'person-new' } | { name: 'person'; id: string } | { name: 'studio'; personId: string; garmentId?: string; outfitId?: string; garmentIds?: string[] } | { name: 'outfits' } | { name: 'settings' } | { name: 'diagnostics' } | { name: 'data' };
 
-export type Path = '/' | '/wardrobe' | '/wardrobe/new' | `/wardrobe/item/${string}` | '/tryon' | '/tryon/person/new' | `/tryon/person/${string}` | `/tryon/studio/${string}` | '/outfits' | '/settings' | '/settings/diagnostics';
+export type Path = '/' | '/wardrobe' | '/wardrobe/new' | `/wardrobe/item/${string}` | '/tryon' | '/tryon/person/new' | `/tryon/person/${string}` | `/tryon/studio/${string}` | '/outfits' | '/settings' | '/settings/diagnostics' | '/settings/data';
 
 function parse(): Route {
   const h = decodeURIComponent(location.hash.replace(/^#/, '')).split('?')[0] || '/';
@@ -28,6 +28,7 @@ function parse(): Route {
     case '/outfits': return { name: 'outfits' };
     case '/settings': return { name: 'settings' };
     case '/settings/diagnostics': return { name: 'diagnostics' };
+    case '/settings/data': return { name: 'data' };
     default: return { name: 'home' };
   }
 }

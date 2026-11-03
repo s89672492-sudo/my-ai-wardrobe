@@ -3,9 +3,7 @@ import { Badge, ListLink, PageHeader } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { AIClient } from '../ai/client';
 import { CUTOUT_MODEL_URL, MODEL_URLS, WASM_PATH, modelsCached } from '../ai/assets';
-import { exportBackup, importBackup, saveFile } from '../lib/backup';
-import { clearAllData } from '../lib/db';
-import { formatMB, getStorageInfo, isStandalone, requestPersist, useOnline, type StorageInfo } from '../lib/platform';
+import { formatMB, getStorageInfo, useOnline, type StorageInfo } from '../lib/platform';
 import { useSettings } from '../lib/settings';
 import type { ComputeMode } from '../lib/types';
 
@@ -22,8 +20,6 @@ export function Settings() {
   const [storage, setStorage] = useState<StorageInfo | null>(null);
   const [cached, setCached] = useState<boolean | null>(null);
   const [dl, setDl] = useState<string | null>(null);
-  const [backup, setBackup] = useState<string | null>(null);
-  const [backupFile, setBackupFile] = useState<File | null>(null);
   const [msg, setMsg] = useState<{ text: string; tone: 'ok' | 'err' } | null>(null);
 
   const refresh = () => { void getStorageInfo().then(setStorage); void modelsCached().then(setCached); };
@@ -45,45 +41,9 @@ export function Settings() {
     }
   }
 
-  async function persist() {
-    const ok = await requestPersist();
-    setMsg(ok ? { text: '已取得永久儲存權限，瀏覽器不會自動清除資料。', tone: 'ok' } : { text: '瀏覽器未同意。iPhone 請先「加入主畫面」，並從主畫面開啟 App 使用。', tone: 'err' });
-    refresh();
-  }
 
-  async function doExport() {
-    setDl(null);
-    setBackup('準備備份');
-    try {
-      // 分享面板必須由使用者直接點擊觸發，所以先產生檔案，再讓使用者點「儲存備份檔」
-      setBackupFile(await exportBackup(setBackup));
-    } catch (e) {
-      setMsg({ text: `匯出失敗：${(e as Error).message}`, tone: 'err' });
-    } finally { setBackup(null); refresh(); }
-  }
 
-  async function doImport(file: File | undefined) {
-    if (!file) return;
-    setBackup('匯入中');
-    try {
-      const r = await importBackup(file, setBackup);
-      setMsg({ text: `匯入完成：新增 ${r.added.garments ?? 0} 件衣服、${r.images} 張圖片${r.skipped ? `，略過 ${r.skipped} 筆已存在的資料` : ''}。`, tone: 'ok' });
-    } catch (e) {
-      setMsg({ text: `匯入失敗：${(e as Error).message}`, tone: 'err' });
-    } finally { setBackup(null); refresh(); }
-  }
 
-  async function wipe() {
-    if (!confirm('確定要刪除所有衣服、照片、試穿結果與設定嗎？此動作無法復原。（已下載的 AI 模型會保留）')) return;
-    if (!confirm('再確認一次：所有資料將永久刪除。建議先匯出備份。')) return;
-    try {
-      // 只刪個人資料；公開的 AI 模型快取保留，避免重新下載
-      await clearAllData();
-      location.reload();
-    } catch (e) {
-      setMsg({ text: `清除失敗：${(e as Error).message}`, tone: 'err' });
-    }
-  }
 
   return (
     <div className="page">
@@ -120,35 +80,11 @@ export function Settings() {
         <ListLink to="/settings/diagnostics" icon="cpu" title="技術檢測" detail="WebGPU、速度、記憶體" />
       </div>
 
-      <h3 className="section-title">儲存空間</h3>
+      <h3 className="section-title">資料與隱私</h3>
       <div className="card">
-        {storage ? (
-          <>
-            <div className="meter" aria-label="儲存空間使用量"><div style={{ width: `${Math.min(100, (storage.usageMB / Math.max(1, storage.quotaMB)) * 100)}%` }} /></div>
-            <p className="muted">已使用 {formatMB(storage.usageMB)}，可用上限約 {formatMB(storage.quotaMB)}</p>
-            <div className="row-between">
-              <span>永久儲存</span>
-              {storage.persisted ? <Badge tone="ok">已授權</Badge> : <button className="btn btn-small" onClick={() => void persist()}>申請</button>}
-            </div>
-          </>
-        ) : <p className="muted">此瀏覽器不提供儲存空間資訊。</p>}
-        {!isStandalone() && <p className="muted">提醒：請勿使用「私密瀏覽」，關閉分頁後資料會被清除。</p>}
-      </div>
-
-      <h3 className="section-title">資料管理</h3>
-      <div className="card">
-        <p className="muted">資料只存在這支手機。瀏覽器可能在空間不足時清除資料，請定期匯出備份。備份檔包含所有衣服與照片，請妥善保管。</p>
-        <button className="btn" disabled={!!backup} onClick={() => void doExport()}><Icon name="share" size={18} /> {backup ?? '匯出備份'}</button>
-        {backupFile && (
-          <div className="backup-ready">
-            <p>備份檔已產生：{backupFile.name}（{(backupFile.size / 1048576).toFixed(1)} MB）</p>
-            <button className="btn btn-primary" onClick={() => { void saveFile(backupFile).then(() => setMsg({ text: '請確認備份檔已存到「檔案」或雲端硬碟。', tone: 'ok' })); }}>儲存備份檔</button>
-          </div>
-        )}
-        <label className={`btn ${backup ? 'disabled' : ''}`}><Icon name="upload" size={18} /> 匯入備份
-          <input type="file" accept=".zip,application/zip" hidden disabled={!!backup} onChange={(e) => { void doImport(e.target.files?.[0]); e.target.value = ''; }} />
-        </label>
-        <button className="btn btn-danger" onClick={() => void wipe()}><Icon name="trash" size={18} /> 清除所有資料</button>
+        {storage && <><div className="meter" aria-label="儲存空間使用量"><div style={{ width: `${Math.min(100, (storage.usageMB / Math.max(1, storage.quotaMB)) * 100)}%` }} /></div>
+        <p className="muted">已使用 {formatMB(storage.usageMB)}，可用上限約 {formatMB(storage.quotaMB)}{storage.persisted ? ' · 永久儲存已授權' : ''}</p></>}
+        <ListLink to="/settings/data" icon="shield" title="備份、儲存空間、清除資料" detail={settings.lastBackupAt ? `上次備份 ${new Date(settings.lastBackupAt).toLocaleDateString('zh-TW')}` : '尚未備份'} />
       </div>
 
       <h3 className="section-title">關於</h3>

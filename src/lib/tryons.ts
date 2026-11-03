@@ -1,11 +1,11 @@
 /** 試穿結果（合成圖、縮圖、使用的衣服與調整）存入 IndexedDB，並寫入歷史紀錄。 */
 import { getDB } from './db';
-import { canvasToBlob, makeThumbnail, uid } from './image';
+import { canvasToBlob, imageProfile, makeThumbnail, uid } from './image';
 import type { HistoryEntry, OutfitLayerOptions, StoredImage, TryOnLayerRecord, TryOnResult } from './types';
 
 export async function saveTryOn(personId: string, layers: TryOnLayerRecord[], result: HTMLCanvasElement, options?: OutfitLayerOptions): Promise<TryOnResult> {
   const now = Date.now();
-  const blob = await canvasToBlob(result, 'image/jpeg', 0.9);
+  const blob = await canvasToBlob(result, 'image/jpeg', imageProfile().tryonQ);
   const thumb = await makeThumbnail(result);
   const img: StoredImage = { id: uid(), kind: 'tryon', blob, width: result.width, height: result.height, hash: '', createdAt: now };
   const th: StoredImage = { id: uid(), kind: 'thumbnail', blob: thumb, width: 480, height: 640, hash: '', createdAt: now };

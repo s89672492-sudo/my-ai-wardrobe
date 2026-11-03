@@ -250,7 +250,7 @@ export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { per
     const c = cleanCanvas();
     if (!c) return;
     const blob = await new Promise<Blob | null>((r) => c.toBlob(r, 'image/jpeg', 0.9));
-    if (blob) await saveFile(new File([blob], `AI試穿-${Date.now()}.jpg`, { type: 'image/jpeg' }));
+    if (blob) await saveFile(new File([blob], `ai-tryon-${Date.now()}.jpg`, { type: 'image/jpeg' }));
   }
 
   const supported = useMemo(() => (garments ?? []).filter((g) => { const k = KIND_OF[g.category]; return k && (filter === 'all' || SLOT_OF[k] === filter); }), [garments, filter]);

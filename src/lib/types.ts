@@ -90,5 +90,9 @@ export type ComputeMode = 'auto' | 'high' | 'balanced' | 'saver';
 export interface AppSettings {
   computeMode: ComputeMode;
   backend: 'auto' | 'wasm';
+  /** 新圖片的儲存品質 */
+  imageQuality: 'standard' | 'compact';
+  /** 上次匯出備份時間 */
+  lastBackupAt?: number;
 }
-export const DEFAULT_SETTINGS: AppSettings = { computeMode: 'auto', backend: 'auto' };
+export const DEFAULT_SETTINGS: AppSettings = { computeMode: 'auto', backend: 'auto', imageQuality: 'standard' };

@@ -7,7 +7,7 @@ import { Icon } from '../components/Icon';
 import { PageHeader } from '../components/ui';
 import { acceleratorFor, maxSideFor, resolveMode } from '../lib/compute';
 import { getImageBlob } from '../lib/garments';
-import { canvasToBlob, ctx2d, decodeImageFile, makeCanvas, makeThumbnail } from '../lib/image';
+import { canvasToBlob, ctx2d, decodeImageFile, imageProfile, makeCanvas, makeThumbnail } from '../lib/image';
 import { deletePerson, getPerson, savePerson } from '../lib/persons';
 import { navigate } from '../lib/router';
 import { useSettings } from '../lib/settings';
@@ -138,7 +138,7 @@ export function PersonPage({ id }: { id?: string }) {
       const tb = await makeThumbnail(photo);
       const p = await savePerson({
         id: person?.id, name: nm, analysis, corrected,
-        photo: dirty.photo ? { blob: await canvasToBlob(photo, 'image/jpeg', 0.9), width: photo.width, height: photo.height, hash: hash.current } : undefined,
+        photo: dirty.photo ? { blob: await canvasToBlob(photo, 'image/jpeg', imageProfile().jpegQ), width: photo.width, height: photo.height, hash: hash.current } : undefined,
         thumb: dirty.photo ? { blob: tb, width: 480, height: 640 } : undefined,
         mask: dirty.mask ? (mask ? { blob: await canvasToBlob(mask, 'image/png'), width: mask.width, height: mask.height } : null) : undefined,
       });

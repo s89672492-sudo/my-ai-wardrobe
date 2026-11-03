@@ -115,7 +115,7 @@ function Viewer({ t, onClose, onDeleted }: { t: TryOnResult; onClose: () => void
   const url = useImageUrl(t.imageId);
   async function share() {
     const b = await getImageBlob(t.imageId);
-    if (b) await saveFile(new File([b], `AI試穿-${t.createdAt}.jpg`, { type: 'image/jpeg' }));
+    if (b) await saveFile(new File([b], `ai-tryon-${t.createdAt}.jpg`, { type: 'image/jpeg' }));
   }
   async function del() {
     if (!confirm('確定刪除這張試穿圖？')) return;

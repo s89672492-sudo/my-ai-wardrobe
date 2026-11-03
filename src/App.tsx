@@ -14,6 +14,7 @@ import { Wardrobe } from './pages/Wardrobe';
 import { GarmentDetail } from './pages/GarmentDetail';
 import { GarmentEditor } from './pages/GarmentEditor';
 import { PersonPage } from './pages/PersonPage';
+import { DataPage } from './pages/DataPage';
 import { TryOnStudio } from './pages/TryOnStudio';
 
 // 技術檢測頁較大，延遲載入
@@ -41,6 +42,7 @@ export default function App() {
         {route.name === 'studio' && <TryOnStudio key={`${route.personId}-${route.outfitId ?? ''}-${route.garmentIds?.join(',') ?? ''}`} personId={route.personId} garmentId={route.garmentId} outfitId={route.outfitId} garmentIds={route.garmentIds} />}
         {route.name === 'outfits' && <Outfits />}
         {route.name === 'settings' && <Settings />}
+        {route.name === 'data' && <DataPage />}
         {route.name === 'diagnostics' && <Suspense fallback={<p className="page muted">載入中…</p>}><Diagnostics /></Suspense>}
       </main>
       {needRefresh && (

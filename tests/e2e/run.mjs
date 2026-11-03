@@ -21,6 +21,8 @@ const ctx = await browser.newContext({ ...devices[DEVICE] });
 const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
+// 隱私：任何違反 CSP 的連線或腳本都算失敗
+page.on('console', (m) => { if (/Content Security Policy|Refused to (connect|load|execute)/i.test(m.text())) errors.push('CSP: ' + m.text().slice(0, 200)); });
 page.on('dialog', (d) => d.accept());
 const tag = DEVICE.replace(/\W+/g, '');
 const idle = () => page.waitForFunction(() => !document.querySelector('.stage-busy'), null, { timeout: 180000 });
@@ -187,7 +189,21 @@ try {
   await page.reload();
   ok(await page.locator('.today').count() === 1, 'home shows today pick');
 
-  // 8. 技術檢測頁兩個模型都能載入
+  // 8. 資料與隱私：CSP、用量、重複檢查、匯出
+  ok(await page.evaluate(() => !!document.querySelector('meta[http-equiv="Content-Security-Policy"]')), 'CSP meta present in production build');
+  await page.goto(BASE + '#/settings/data');
+  await page.waitForSelector('.usage');
+  console.log('  usage:', (await page.locator('.usage').innerText()).replace(/\s*\n\s*/g, ' | '));
+  ok(/全身照/.test(await page.locator('.usage').innerText()), 'storage breakdown lists full-body photos');
+  await page.click('button:has-text("開始檢查")');
+  await page.waitForSelector('.dupes');
+  console.log('  dupes:', (await page.locator('.dupes').innerText()).replace(/\n/g, ' | ').slice(0, 160));
+  await page.click('button:has-text("匯出完整備份")');
+  await page.waitForSelector('.backup-ready', { timeout: 60000 });
+  console.log('  backup:', await page.locator('.backup-ready p').innerText());
+  ok(true, 'full backup generated');
+
+  // 9. 技術檢測頁兩個模型都能載入
   await page.goto(BASE + '#/settings/diagnostics');
   await page.waitForSelector('dl');
   await page.selectOption('select >> nth=1', 'wasm');

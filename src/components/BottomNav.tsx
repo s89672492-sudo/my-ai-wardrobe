@@ -7,7 +7,7 @@ const TABS: { to: Path; label: string; icon: IconName; match: Route['name'][] }[
   { to: '/wardrobe', label: '我的衣櫥', icon: 'hanger', match: ['wardrobe', 'garment', 'garment-new', 'garment-edit'] },
   { to: '/tryon', label: 'AI 試穿', icon: 'sparkle', match: ['tryon', 'person', 'person-new', 'studio'] },
   { to: '/outfits', label: '穿搭收藏', icon: 'heart', match: ['outfits'] },
-  { to: '/settings', label: '個人設定', icon: 'user', match: ['settings', 'diagnostics'] },
+  { to: '/settings', label: '個人設定', icon: 'user', match: ['settings', 'diagnostics', 'data'] },
 ];
 
 export function BottomNav({ route }: { route: Route }) {

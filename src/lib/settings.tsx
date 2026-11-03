@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { loadSettings, saveSettings } from './db';
+import { setImageProfile } from './image';
 import { DEFAULT_SETTINGS, type AppSettings } from './types';
 
 interface Ctx { settings: AppSettings; update: (p: Partial<AppSettings>) => Promise<void>; error: string | null }
@@ -9,6 +10,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => { loadSettings().then(setSettings, (e: Error) => setError(e.message)); }, []);
+  useEffect(() => { setImageProfile(settings.imageQuality); }, [settings.imageQuality]);
   const update = useCallback(async (p: Partial<AppSettings>) => {
     const next = { ...settings, ...p };
     setSettings(next);

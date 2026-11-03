@@ -5,7 +5,7 @@ import { GarmentForm } from '../components/GarmentForm';
 import { Icon } from '../components/Icon';
 import { PageHeader } from '../components/ui';
 import { createGarment, findDuplicate, getGarment, getImageBlob, updateGarment, type GarmentImages, type GarmentMeta } from '../lib/garments';
-import { alphaBBox, canvasToBlob, ctx2d, decodeImageFile, guessColor, LIMITS, makeCanvas, makeThumbnail, sha256 } from '../lib/image';
+import { alphaBBox, canvasToBlob, ctx2d, decodeImageFile, guessColor, imageProfile, LIMITS, makeCanvas, makeThumbnail, sha256 } from '../lib/image';
 import { getDB } from '../lib/db';
 import { getStorageInfo } from '../lib/platform';
 import { navigate } from '../lib/router';
@@ -49,7 +49,7 @@ export function GarmentEditor({ id }: { id?: string }) {
       hash.current = await sha256(file);
       const d = await findDuplicate(hash.current);
       if (d && d.id !== id) setDupe(d);
-      const bmp = await decodeImageFile(file, LIMITS.originalMaxSide);
+      const bmp = await decodeImageFile(file, imageProfile().originalMaxSide);
       const c = makeCanvas(bmp.width, bmp.height);
       ctx2d(c).drawImage(bmp, 0, 0);
       bmp.close();
@@ -67,7 +67,7 @@ export function GarmentEditor({ id }: { id?: string }) {
     setError(null);
     try {
       const orig = cropped!;
-      const original = { blob: await canvasToBlob(orig, 'image/jpeg', 0.88), width: orig.width, height: orig.height, hash: hash.current };
+      const original = { blob: await canvasToBlob(orig, 'image/jpeg', imageProfile().jpegQ), width: orig.width, height: orig.height, hash: hash.current };
       let cutout: GarmentImages['cutout'] = null;
       let thumbSrc: HTMLCanvasElement = work;
       if (mask) {
