@@ -1,6 +1,6 @@
 /** 主執行緒端的 AI Worker 客戶端：請求/回應配對、取消、釋放。 */
 import { AI_CACHE_NAME } from './assets';
-import type { Accelerator, ModelName, WorkerRequest, WorkerResponse } from './protocol';
+import type { Accelerator, Keypoint, ModelName, WorkerRequest, WorkerResponse } from './protocol';
 
 type Pending = { resolve: (r: WorkerResponse) => void; reject: (e: Error) => void; onProgress?: (s: string) => void };
 
@@ -54,8 +54,8 @@ export class AIClient {
     return this.send({ type: 'cutout', bitmap, points } as WorkerRequest, [bitmap], onProgress);
   }
 
-  analyze(bitmap: ImageBitmap, onProgress?: (s: string) => void) {
-    return this.send({ type: 'analyze', bitmap } as WorkerRequest, [bitmap], onProgress);
+  analyze(bitmap: ImageBitmap, onProgress?: (s: string) => void, keypointsHint?: Keypoint[]) {
+    return this.send({ type: 'analyze', bitmap, keypointsHint } as WorkerRequest, [bitmap], onProgress);
   }
 
   cancel(targetId: number) {

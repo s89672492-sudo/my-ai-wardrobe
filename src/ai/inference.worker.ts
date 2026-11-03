@@ -240,9 +240,10 @@ async function analyze(msg: Extract<WorkerRequest, { type: 'analyze' }>) {
   const { bitmap, id } = msg;
   const t0 = performance.now();
   try {
-    if (!models.pose || !models.segmenter) throw new Error('人體辨識模型尚未載入');
+    const hint = msg.keypointsHint;
+    if ((!models.pose && !hint) || !models.segmenter) throw new Error('人體辨識模型尚未載入');
     post({ type: 'progress', id, stage: '尋找人體位置' });
-    const kp1 = await runPose(bitmap);
+    const kp1 = hint ?? await runPose(bitmap);
     const pass1Ms = performance.now() - t0;
     if (cancelled.has(id)) return post({ type: 'cancelled', id });
 
@@ -264,15 +265,15 @@ async function analyze(msg: Extract<WorkerRequest, { type: 'analyze' }>) {
 
     post({ type: 'progress', id, stage: '精確定位關鍵點' });
     const p0 = performance.now();
-    let keypoints = refined ? (await runPose(crop)).map((k) => ({ ...k, x: k.x + region.x, y: k.y + region.y })) : kp1;
+    let keypoints = refined && !hint ? (await runPose(crop)).map((k) => ({ ...k, x: k.x + region.x, y: k.y + region.y })) : kp1;
     // 第二次整體信心比第一次差時，逐點取較可信者
-    if (refined) keypoints = keypoints.map((k, i) => (kp1[i]!.score > k.score + 0.15 ? kp1[i]! : k));
+    if (refined && !hint) keypoints = keypoints.map((k, i) => (kp1[i]!.score > k.score + 0.15 ? kp1[i]! : k));
     const pass2Ms = performance.now() - p0;
     if (cancelled.has(id)) { if (crop !== bitmap) crop.close(); return post({ type: 'cancelled', id }); }
 
     post({ type: 'progress', id, stage: '分割人體輪廓' });
     const s0 = performance.now();
-    const seg = await runSegmenter(crop);
+    const seg = await segmentTiled(crop);
     const segmentMs = performance.now() - s0;
     if (crop !== bitmap) crop.close();
     if (cancelled.has(id)) { seg.bitmap.close(); return post({ type: 'cancelled', id }); }
@@ -314,6 +315,85 @@ async function runPose(src: ImageBitmap): Promise<Keypoint[]> {
       return { name, x: p.x, y: p.y, score: data[i * 3 + 2]! };
     });
   } finally { outs.forEach((t) => t.delete()); }
+}
+
+/** 分割模型原始輸出（已去掉 letterbox 邊、已轉 0~1） */
+async function segmentRaw(src: ImageBitmap): Promise<{ data: Float32Array; w: number; h: number }> {
+  const m = models.segmenter;
+  if (!m) throw new Error('分割模型尚未載入');
+  const { lb, rgba } = readPixels(src, m.w, m.h);
+  const n = m.w * m.h;
+  const f = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { f[i * 3] = rgba[i * 4]! / 255; f[i * 3 + 1] = rgba[i * 4 + 1]! / 255; f[i * 3 + 2] = rgba[i * 4 + 2]! / 255; }
+  const input = new Tensor(f, [1, m.h, m.w, 3]);
+  let outs: Tensor[];
+  try { outs = await m.model.run([input]); } finally { input.delete(); }
+  try {
+    const out = outs[0]!;
+    const shape = Array.from(out.shape);
+    const ch = shape.length === 4 ? shape[3]! : 1;
+    const raw = (await out.data()) as Float32Array;
+    let min = Infinity, max = -Infinity;
+    for (let i = 0; i < n; i++) { const v = raw[i * ch + ch - 1]!; if (v < min) min = v; if (v > max) max = v; }
+    const logits = min < -0.001 || max > 1.001;
+    const data = new Float32Array(lb.scaledW * lb.scaledH);
+    for (let y = 0; y < lb.scaledH; y++) for (let x = 0; x < lb.scaledW; x++) {
+      let v = raw[((y + lb.dy) * m.w + x + lb.dx) * ch + ch - 1]!;
+      if (logits) v = 1 / (1 + Math.exp(-v));
+      data[y * lb.scaledW + x] = v;
+    }
+    return { data, w: lb.scaledW, h: lb.scaledH };
+  } finally { outs.forEach((t) => t.delete()); }
+}
+
+/**
+ * 細長照片（例如直式全身照）切成數個重疊的正方形分別分割再合併，
+ * 避免 256×256 模型有一半解析度浪費在 letterbox 補邊上。
+ */
+async function segmentTiled(src: ImageBitmap): Promise<{ bitmap: ImageBitmap; width: number; height: number }> {
+  const m = models.segmenter!;
+  const long = Math.max(src.width, src.height), short = Math.min(src.width, src.height);
+  const tall = src.height >= src.width;
+  const n = long / short < 1.25 ? 1 : Math.ceil((long / short) * 1.15);
+  let outW: number, outH: number, out: Float32Array;
+  if (n === 1) {
+    const r = await segmentRaw(src);
+    outW = r.w; outH = r.h; out = r.data;
+  } else {
+    const k = m.w / short; // 輸出像素 / 原圖像素
+    outW = Math.round(src.width * k); outH = Math.round(src.height * k);
+    out = new Float32Array(outW * outH);
+    // 先放整張圖（低解析度）的結果，確保只有腿部的切片辨識不佳時仍有覆蓋
+    const full = await segmentRaw(src);
+    for (let y = 0; y < outH; y++) {
+      const fy = Math.min(full.h - 1, (y / outH) * full.h);
+      const y0 = Math.floor(fy), y1 = Math.min(full.h - 1, y0 + 1), wy = fy - y0;
+      for (let x = 0; x < outW; x++) {
+        const fx = Math.min(full.w - 1, (x / outW) * full.w);
+        const x0 = Math.floor(fx), x1 = Math.min(full.w - 1, x0 + 1), wx = fx - x0;
+        const d = full.data;
+        out[y * outW + x] = (d[y0 * full.w + x0]! * (1 - wx) + d[y0 * full.w + x1]! * wx) * (1 - wy) + (d[y1 * full.w + x0]! * (1 - wx) + d[y1 * full.w + x1]! * wx) * wy;
+      }
+    }
+    for (let t = 0; t < n; t++) {
+      const off = Math.round(((long - short) * t) / (n - 1));
+      const tile = await createImageBitmap(src, tall ? 0 : off, tall ? off : 0, short, short);
+      const r = await segmentRaw(tile);
+      tile.close();
+      const o = Math.round(off * k);
+      for (let y = 0; y < r.h; y++) for (let x = 0; x < r.w; x++) {
+        const X = tall ? x : x + o, Y = tall ? y + o : y;
+        if (X >= outW || Y >= outH) continue;
+        const i = Y * outW + X, v = r.data[y * r.w + x]!;
+        if (v > out[i]!) out[i] = v;
+      }
+    }
+  }
+  const px = new Uint8ClampedArray(outW * outH * 4);
+  for (let i = 0; i < out.length; i++) { px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = 255; px[i * 4 + 3] = Math.round(out[i]! * 255); }
+  const c = new OffscreenCanvas(outW, outH);
+  c.getContext('2d')!.putImageData(new ImageData(px, outW, outH), 0, 0);
+  return { bitmap: await createImageBitmap(c), width: outW, height: outH };
 }
 
 async function runSegmenter(src: ImageBitmap) {

@@ -61,7 +61,7 @@ export function BodyView({ photo, mask, analysis, layers, editing, onEdit }: {
       const ax = ctx2d(a);
       ax.lineCap = 'round';
       for (const cap of armCapsules({ ...analysis, keypoints: kp })) {
-        ax.strokeStyle = analysis.arms[cap.side] === 'front' ? '#000' : 'rgba(0,0,0,0.55)';
+        ax.strokeStyle = analysis.arms[cap.side] === 'front' || analysis.arms[cap.side] === 'akimbo' ? '#000' : 'rgba(0,0,0,0.7)';
         ax.lineWidth = cap.r * 2;
         ax.beginPath(); ax.moveTo(cap.a.x, cap.a.y); ax.lineTo(cap.b.x, cap.b.y); ax.stroke();
       }

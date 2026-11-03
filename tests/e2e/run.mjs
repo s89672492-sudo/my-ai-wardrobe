@@ -30,7 +30,7 @@ try {
   await page.evaluate(() => navigator.serviceWorker.ready);
 
   // 1. 新增全身照 → AI 辨識
-  for (const [file, expect] of [['photo-02.jpg', {}], ['photo-01.jpg', { armFront: true }], ['photo-03.jpg', {}]]) {
+  for (const [file, expect] of [['photo-02.jpg', {}], ['photo-01.jpg', { akimbo: true }], ['photo-03.jpg', { akimbo: true }]]) {
     await page.goto(BASE + '#/tryon/person/new');
     await page.waitForSelector('.pick', { timeout: 15000 });
     await page.locator('input[type=file]:not([capture])').setInputFiles(path.join(PHOTOS, file));
@@ -41,7 +41,7 @@ try {
     console.log(`--- ${file}\n  ${checks.map((c) => c.replace(/\n/g, ' ')).join('\n  ')}\n  ${specs.replace(/\n/g, ' | ')}`);
     ok(!checks.some((c) => c.startsWith('✕')), `${file}: core keypoints detected`);
     ok(/人體輪廓實際量測/.test(specs), `${file}: widths measured from silhouette`);
-    if (expect.armFront) ok(/在身體前方/.test(specs), `${file}: arm in front of torso detected`);
+    if (expect.akimbo) ok(/叉腰/.test(specs), `${file}: hand-on-hip (akimbo) detected`);
     await page.screenshot({ path: path.join(OUT, `${tag}-${file}.png`), fullPage: true });
     await page.click('button:has-text("儲存全身照")');
     await page.waitForURL(/#\/tryon\/person\/(?!new$)[\w-]+$/, { timeout: 30000 });
@@ -59,6 +59,7 @@ try {
 
   // 2. 校正關鍵點（拖曳左肩）→ 儲存 → 重新整理仍保留
   await page.click('button:has-text("校正關鍵點")');
+  await page.waitForTimeout(600); // 等待自動捲動到照片
   const before = await page.locator('.specs').innerText();
   const box = await page.locator('.cutout-stage canvas').boundingBox();
   const kp = await page.evaluate(async () => {

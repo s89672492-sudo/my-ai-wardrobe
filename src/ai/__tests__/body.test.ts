@@ -45,6 +45,12 @@ describe('analyzeBody', () => {
     expect(a.arms.right).toBe('side');
   });
 
+  it('手肘彎曲、手腕在腰側判定叉腰', () => {
+    const a = analyzeBody(frontal({ left_elbow: [440, 400], left_wrist: [380, 520] }), 600, 1200, null);
+    expect(a.arms.left).toBe('akimbo');
+    expect(a.checks.some((c) => c.id === 'akimbo')).toBe(true);
+  });
+
   it('手腕高於肩膀判定舉手', () => {
     expect(analyzeBody(frontal({ right_wrist: [180, 150], right_elbow: [190, 220] }), 600, 1200, null).arms.right).toBe('raised');
   });

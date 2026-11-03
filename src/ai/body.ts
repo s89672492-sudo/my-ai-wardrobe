@@ -7,7 +7,7 @@
 import type { Keypoint } from './protocol';
 
 export type Pt = { x: number; y: number };
-export type ArmState = 'side' | 'front' | 'raised' | 'unknown';
+export type ArmState = 'side' | 'front' | 'akimbo' | 'raised' | 'unknown';
 export type Facing = 'front' | 'back' | 'side' | 'unknown';
 export interface Check { id: string; level: 'ok' | 'info' | 'warn' | 'error'; text: string }
 
@@ -179,7 +179,17 @@ export function analyzeBody(keypoints: Keypoint[], imageW: number, imageH: numbe
     if (!ok(s, e)) return 'unknown';
     if (ok(w) && k(w).y < k(s).y) return 'raised';
     const pts = ok(w) ? [P(e), P(w), lerp(P(e), P(w), 0.5)] : [P(e)];
-    return ok(KP.lHip, KP.rHip) && pts.some((p) => pointInPolygon(p, torsoPoly)) ? 'front' : 'side';
+    if (ok(KP.lHip, KP.rHip) && pts.some((p) => pointInPolygon(p, torsoPoly))) return 'front';
+    // 叉腰：手肘明顯彎曲、手腕靠近同側腰臀
+    if (ok(w)) {
+      const hip = s === KP.lSh ? P(KP.lHip) : P(KP.rHip);
+      const waistSide = lerp(P(s), hip, WAIST_T);
+      const u = { x: P(s).x - P(e).x, y: P(s).y - P(e).y }, v = { x: P(w).x - P(e).x, y: P(w).y - P(e).y };
+      const cos = (u.x * v.x + u.y * v.y) / ((Math.hypot(u.x, u.y) * Math.hypot(v.x, v.y)) || 1);
+      const near = Math.min(dist(P(w), hip), dist(P(w), waistSide)) < jointShoulder * 0.6;
+      if (cos > -0.85 && near) return 'akimbo'; // 手肘角度 < 約 148°（自然下垂約 165°~180°）
+    }
+    return 'side';
   };
   const arms = { left: armState(KP.lSh, KP.lEl, KP.lWr), right: armState(KP.rSh, KP.rEl, KP.rWr) };
 
@@ -209,6 +219,8 @@ export function analyzeBody(keypoints: Keypoint[], imageW: number, imageH: numbe
 
   const front = (['left', 'right'] as const).filter((s) => arms[s] === 'front');
   if (front.length) checks.push({ id: 'arms', level: 'info', text: `${front.map((s) => (s === 'left' ? '左手' : '右手')).join('、')}在身體前方，試穿時手臂會保留在衣服前面` });
+  const akimbo = (['left', 'right'] as const).filter((s) => arms[s] === 'akimbo');
+  if (akimbo.length) checks.push({ id: 'akimbo', level: 'info', text: `${akimbo.map((s) => (s === 'left' ? '左手' : '右手')).join('、')}叉腰，腰側的手臂會保留在衣服前面` });
   if (arms.left === 'raised' || arms.right === 'raised') checks.push({ id: 'raised', level: 'info', text: '手臂舉高時，袖子變形效果會較差' });
 
   if (!mask) checks.push({ id: 'mask', level: 'warn', text: '沒有人體輪廓，衣服可能超出身體範圍' });

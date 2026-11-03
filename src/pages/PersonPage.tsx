@@ -13,7 +13,7 @@ import { navigate } from '../lib/router';
 import { useSettings } from '../lib/settings';
 import type { PersonPhoto } from '../lib/types';
 
-const ARM_ZH = { side: '在身側', front: '在身體前方', raised: '舉起', unknown: '無法判斷' } as const;
+const ARM_ZH = { side: '在身側', front: '在身體前方', akimbo: '叉腰', raised: '舉起', unknown: '無法判斷' } as const;
 const FACING_ZH = { front: '正面', back: '背面／左右相反', side: '側身', unknown: '無法判斷' } as const;
 const LEVEL_ICON = { ok: '✓', info: 'i', warn: '!', error: '✕' } as const;
 
@@ -199,7 +199,7 @@ export function PersonPage({ id }: { id?: string }) {
           )}
           {analysis && (
             <div className="row-2">
-              <button className={`btn ${editing ? 'btn-primary' : ''}`} disabled={!!busy} onClick={() => setEditing(!editing)}><Icon name="tap" size={18} /> {editing ? '完成校正' : '校正關鍵點'}</button>
+              <button className={`btn ${editing ? 'btn-primary' : ''}`} disabled={!!busy} onClick={() => { if (!editing) window.scrollTo({ top: 0, behavior: 'smooth' }); setEditing(!editing); }}><Icon name="tap" size={18} /> {editing ? '完成校正' : '校正關鍵點'}</button>
               <button className="btn" disabled={!!busy} onClick={() => void run(photo)}><Icon name="rotate" size={18} /> 重新辨識</button>
             </div>
           )}

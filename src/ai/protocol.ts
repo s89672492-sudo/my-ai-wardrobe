@@ -10,7 +10,7 @@ export type WorkerRequest =
   /** 點選式去背：points 為 0~1 正規化座標，每個點各推論一次後取聯集 */
   | { type: 'cutout'; id: number; bitmap: ImageBitmap; points: { x: number; y: number }[] }
   /** 全身分析：姿勢 → 依人體範圍裁切 → 第二次姿勢 + 分割（提高解析度） */
-  | { type: 'analyze'; id: number; bitmap: ImageBitmap }
+  | { type: 'analyze'; id: number; bitmap: ImageBitmap; /** 已知關鍵點（例如手動校正後重新分割）：略過姿勢推論 */ keypointsHint?: Keypoint[] }
   | { type: 'cancel'; id: number; targetId: number }
   | { type: 'dispose'; id: number };
 
