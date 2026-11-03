@@ -32,12 +32,13 @@ try {
   // 1. 新增全身照 → AI 辨識
   for (const [file, expect] of [['photo-02.jpg', {}], ['photo-01.jpg', { armFront: true }], ['photo-03.jpg', {}]]) {
     await page.goto(BASE + '#/tryon/person/new');
+    await page.waitForSelector('.pick', { timeout: 15000 });
     await page.locator('input[type=file]:not([capture])').setInputFiles(path.join(PHOTOS, file));
     await page.waitForSelector('.checks', { timeout: 180000 });
     await idle();
     const checks = await page.locator('.checks li').allInnerTexts();
     const specs = await page.locator('.specs').innerText();
-    console.log(`--- ${file}\n  ${checks.join('\n  ')}\n  ${specs.replace(/\n/g, ' | ')}`);
+    console.log(`--- ${file}\n  ${checks.map((c) => c.replace(/\n/g, ' ')).join('\n  ')}\n  ${specs.replace(/\n/g, ' | ')}`);
     ok(!checks.some((c) => c.startsWith('✕')), `${file}: core keypoints detected`);
     ok(/人體輪廓實際量測/.test(specs), `${file}: widths measured from silhouette`);
     if (expect.armFront) ok(/在身體前方/.test(specs), `${file}: arm in front of torso detected`);
@@ -45,6 +46,15 @@ try {
     await page.click('button:has-text("儲存全身照")');
     await page.waitForURL(/#\/tryon\/person\/[\w-]+$/);
     await page.waitForSelector('.checks');
+    // 輸出關鍵點，供離線檢查幾何量測
+    const dump = await page.evaluate(async () => {
+      const id = location.hash.split('/').pop();
+      const db = await new Promise((r) => { const q = indexedDB.open('my-ai-wardrobe'); q.onsuccess = () => r(q.result); });
+      const p = await new Promise((r) => { const t = db.transaction('persons').objectStore('persons').get(id); t.onsuccess = () => r(t.result); });
+      const a = p.analysis;
+      return { w: a.imageW, h: a.imageH, maskRect: a.maskRect, kp: a.keypoints.map((k) => [Math.round(k.x), Math.round(k.y), +k.score.toFixed(2)]) };
+    });
+    console.log(`KP ${file} ${JSON.stringify(dump)}`);
   }
 
   // 2. 校正關鍵點（拖曳左肩）→ 儲存 → 重新整理仍保留
@@ -94,6 +104,8 @@ try {
   ok(/MoveNet 載入成功/.test(log) && /Selfie Segmenter 載入成功/.test(log), 'diagnostics: both models load');
 } catch (e) {
   ok(false, `exception: ${e.message.split('\n')[0]}`);
+  console.log('  url:', page.url());
+  console.log('  page:', (await page.locator('body').innerText().catch(() => '')).slice(0, 400).replace(/\n/g, ' | '));
   await page.screenshot({ path: path.join(OUT, `${tag}-error.png`), fullPage: true }).catch(() => {});
 }
 ok(errors.length === 0, `no page errors ${errors.length ? JSON.stringify(errors) : ''}`);
