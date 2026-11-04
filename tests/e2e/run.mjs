@@ -24,6 +24,19 @@ page.on('pageerror', (e) => errors.push(e.message));
 // 隱私：任何違反 CSP 的連線或腳本都算失敗
 page.on('console', (m) => { if (/Content Security Policy|Refused to (connect|load|execute)/i.test(m.text())) errors.push('CSP: ' + m.text().slice(0, 200)); });
 page.on('dialog', (d) => d.accept());
+// DEBUG：記錄 toBlob、View Transition、IndexedDB 交易
+await page.addInitScript(() => {
+  const log = (...a) => console.log('DBG', performance.now().toFixed(0), ...a);
+  const tb = HTMLCanvasElement.prototype.toBlob;
+  HTMLCanvasElement.prototype.toBlob = function (cb, ...r) { const id = Math.random().toString(36).slice(2, 6); log('toBlob start', id, this.width, this.height); return tb.call(this, (b) => { log('toBlob done', id); cb(b); }, ...r); };
+  const svt = document.startViewTransition?.bind(document);
+  if (svt) document.startViewTransition = (cb) => { log('VT start', location.hash); const t = svt(() => { log('VT cb run'); return cb(); }); t.finished.then(() => log('VT finished'), (e) => log('VT finished rejected', e.message)); t.updateCallbackDone.then(() => log('VT cb done'), (e) => log('VT cb rejected', e.message)); return t; };
+  addEventListener('hashchange', () => log('hashchange', location.hash));
+  const tx = IDBDatabase.prototype.transaction;
+  IDBDatabase.prototype.transaction = function (...a) { const t = tx.apply(this, a); const n = String(a[0]); t.addEventListener('complete', () => log('idb complete', n)); t.addEventListener('abort', () => log('idb abort', n)); return t; };
+  document.addEventListener('visibilitychange', () => log('visibility', document.visibilityState));
+});
+page.on('console', (m) => { if (m.text().startsWith('DBG')) console.log(m.text()); });
 const tag = DEVICE.replace(/\W+/g, '');
 const idle = () => page.waitForFunction(() => !document.querySelector('.stage-busy'), null, { timeout: 180000 });
 

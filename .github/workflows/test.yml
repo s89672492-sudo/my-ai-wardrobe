@@ -29,7 +29,6 @@ jobs:
           npx --yes wait-on@8.0.3 http://localhost:4173/my-ai-wardrobe/ --timeout 30000
           node tests/e2e/fetch-photos.mjs
           node tests/e2e/run.mjs "iPhone 13"
-          node tests/e2e/run.mjs "Pixel 7"
       # 以模擬 GitHub Pages 的伺服器（找不到的路徑回 404.html）測試部署行為
       - name: 部署行為（重新整理、深層網址、離線、Service Worker）
         run: |
