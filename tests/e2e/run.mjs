@@ -188,6 +188,7 @@ try {
   ok(true, 'recommended outfit opens in try-on studio with all pieces');
   await page.goto(BASE + '#/');
   await page.reload();
+  await page.waitForSelector('.today', { timeout: 10000 }).catch(() => {});
   ok(await page.locator('.today').count() === 1, 'home shows today pick');
 
   // 情侶衣櫥：暱稱、自訂頭像（只存本機）、依擁有者篩選
