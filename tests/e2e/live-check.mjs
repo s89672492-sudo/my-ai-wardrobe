@@ -80,6 +80,7 @@ try {
     ok((await textOf()).includes(text), `重新整理 ${route} 仍顯示「${text}」`);
   }
   await page.goto(BASE + '#/settings');
+  await page.waitForFunction((b) => document.querySelector('main')?.innerText.includes(`（${b}）`), ver?.build, { timeout: 10000 }).catch(() => {});
   ok((await textOf()).includes(`（${ver?.build}）`), `設定頁顯示部署代號 ${ver?.build}`);
 
   // 沒有 # 的網址（分享或手動輸入）：在線上由 404.html 轉址；Service Worker 安裝後由 App 轉換
@@ -108,6 +109,7 @@ try {
   ok(await page.locator('.offline-bar').isVisible(), '離線時顯示「目前離線」提示');
   await page.goto(BASE + 'wardrobe').catch(() => {});
   await page.waitForURL(/#\/wardrobe$/, { timeout: 15000 }).catch(() => {});
+  await page.waitForFunction(() => document.querySelector('main')?.innerText.includes('我的衣櫥'), null, { timeout: 10000 }).catch(() => {});
   ok(page.url().endsWith('#/wardrobe') && (await textOf()).includes('我的衣櫥'), '離線開啟沒有 # 的網址也能進入 App');
   await ctx.setOffline(false);
 } catch (e) {
