@@ -443,3 +443,25 @@ h1, h2 { letter-spacing: 0 !important; }
 .empty h2 { font-weight: 800; }
 /* 卡片裡的小縮圖不再疊一層粗框 */
 .today .today-thumb img, .rec-card .rec-piece { border: 2px solid var(--line); box-shadow: none; }
+
+/* ===== 換頁轉場：柔和淡出淡入 ===== */
+/* 底部選單、AI 狀態、提示固定不動，不參與淡入淡出 */
+nav[aria-label="主要導覽"] { view-transition-name: bottom-nav; }
+.ai-pill { view-transition-name: ai-pill; }
+.offline-bar { view-transition-name: offline-bar; }
+::view-transition-group(bottom-nav), ::view-transition-group(ai-pill), ::view-transition-group(offline-bar) { animation: none; }
+::view-transition-old(root) { animation: page-out 120ms ease-in both; }
+::view-transition-new(root) { animation: page-in 260ms cubic-bezier(.22, .8, .3, 1) 110ms both; }
+@keyframes page-out { to { opacity: 0; } }
+@keyframes page-in { from { opacity: 0; transform: translateY(10px); } }
+/* 不支援 View Transitions 的瀏覽器：新頁面淡入 */
+@supports not (view-transition-name: none) {
+  .app-main { animation: page-in 260ms cubic-bezier(.22, .8, .3, 1) both; }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+  .app-main { animation: none; }
+}
+/* 按下時的回饋也放慢一點，比較柔和 */
+.btn, .chip, .owner-tab, .stat, .feature-card, .garment-card a, .today { transition: transform .15s ease, box-shadow .15s ease, background-color .2s ease, border-color .2s ease; }
+.chip:active, .owner-tab:active, .stat:active, .feature-card:active, .today:active { transform: translateY(2px); }

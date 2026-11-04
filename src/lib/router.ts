@@ -1,5 +1,6 @@
 /** 極簡 hash 路由：GitHub Pages 重新整理任何頁面都不會 404。 */
 import { useEffect, useState } from 'react';
+import { flushSync } from 'react-dom';
 
 export type Route =
   | { name: 'home' } | { name: 'wardrobe' } | { name: 'garment-new' }
@@ -37,7 +38,15 @@ function parse(): Route {
 export function useRoute(): Route {
   const [r, setR] = useState<Route>(parse);
   useEffect(() => {
-    const on = () => { setR(parse()); window.scrollTo(0, 0); };
+    // 換頁：支援 View Transitions 的瀏覽器（iOS 18+ Safari、Chrome）用淡出淡入；
+    // 捲回頂端在轉場「之內」完成，畫面不會先跳一下。系統設定「減少動態效果」時直接切換。
+    const on = () => {
+      const apply = () => { setR(parse()); window.scrollTo(0, 0); };
+      const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (doc.startViewTransition && !reduce) doc.startViewTransition(() => flushSync(apply));
+      else apply();
+    };
     addEventListener('hashchange', on);
     return () => removeEventListener('hashchange', on);
   }, []);

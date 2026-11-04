@@ -71,7 +71,7 @@ export default function App() {
     <SettingsProvider>
       {!online && <div className="offline-bar"><Icon name="wifiOff" size={16} /> 目前離線，衣櫥與已下載的 AI 仍可使用</div>}
       <AIStatusPill />
-      <main className="app-main">
+      <main className="app-main" key={route.name} data-route={route.name}>
         {route.name === 'home' && <Home />}
         {route.name === 'wardrobe' && <Wardrobe />}
         {route.name === 'garment-new' && <GarmentEditor key="new" />}
