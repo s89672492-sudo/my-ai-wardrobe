@@ -56,6 +56,13 @@ export function Settings() {
       <h3 className="section-title">我們</h3>
       <CoupleEditor />
 
+      <h3 className="section-title">外觀</h3>
+      <div className="segmented three" role="radiogroup" aria-label="外觀">
+        {([['auto', '跟隨系統'], ['light', '淺色'], ['dark', '深色']] as const).map(([k, l]) => (
+          <button key={k} role="radio" aria-checked={(settings.theme ?? 'auto') === k} className={(settings.theme ?? 'auto') === k ? 'on' : ''} onClick={() => void update({ theme: k })}>{l}</button>
+        ))}
+      </div>
+
       <h3 className="section-title">運算模式</h3>
       <div className="card options" role="radiogroup" aria-label="運算模式">
         {MODES.map((m) => (

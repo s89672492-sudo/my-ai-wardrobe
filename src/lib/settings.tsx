@@ -11,6 +11,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   useEffect(() => { loadSettings().then(setSettings, (e: Error) => setError(e.message)); }, []);
   useEffect(() => { setImageProfile(settings.imageQuality); }, [settings.imageQuality]);
+  useEffect(() => { applyTheme(settings.theme ?? 'auto'); }, [settings.theme]);
   const update = useCallback(async (p: Partial<AppSettings>) => {
     const next = { ...settings, ...p };
     setSettings(next);
@@ -20,3 +21,18 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 }
 
 export const useSettings = () => useContext(SettingsContext);
+
+const THEME_KEY = 'wardrobe-theme';
+/** 套用外觀；同時記在 localStorage，下次開啟時在畫面出現前就套用（避免先閃一下淺色） */
+export function applyTheme(t: 'auto' | 'light' | 'dark') {
+  const root = document.documentElement;
+  if (t === 'auto') delete root.dataset.theme; else root.dataset.theme = t;
+  try { localStorage.setItem(THEME_KEY, t); } catch { /* ignore */ }
+  const dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#17162a' : '#eef3fb');
+}
+export function applySavedTheme() {
+  let t: string | null = null;
+  try { t = localStorage.getItem(THEME_KEY); } catch { /* ignore */ }
+  applyTheme(t === 'light' || t === 'dark' ? t : 'auto');
+}

@@ -103,6 +103,8 @@ export interface AppSettings {
   lastBackupAt?: number;
   /** 試穿光影融合強度 0~100（預設 60） */
   tryOnShading?: number;
+  /** 外觀：跟隨系統／淺色／深色 */
+  theme?: 'auto' | 'light' | 'dark';
   /** 兩人的暱稱與自訂頭像（頭像圖片只存在這支手機） */
   couple?: CoupleSettings;
 }

@@ -3,7 +3,7 @@
   position: fixed; left: 12px; right: 12px; bottom: calc(8px + env(safe-area-inset-bottom)); z-index: 20;
   max-width: 576px; margin: 0 auto;
   display: grid; grid-template-columns: repeat(5, 1fr);
-  background: #fff; border: 2.5px solid var(--ink); border-radius: 26px; box-shadow: 0 4px 0 var(--ink);
+  background: var(--paper); border: 2.5px solid var(--edge); border-radius: 26px; box-shadow: 0 4px 0 var(--shadow-c);
   padding: 4px;
 }
 .tab {
@@ -11,4 +11,4 @@
   min-height: 54px; color: var(--muted); text-decoration: none; font-size: 11px; font-weight: 700; border-radius: 20px;
   -webkit-tap-highlight-color: transparent;
 }
-.active { color: var(--ink); background: var(--butter); }
+.active { color: var(--on-accent); background: var(--butter); }

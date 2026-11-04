@@ -203,6 +203,7 @@ try {
   ok(await page.locator('.couple-person').first().locator('.avatar img').count() === 1, 'couple: custom avatar saved locally');
   await page.goto(BASE + '#/');
   await page.reload();
+  await page.waitForFunction(() => /一二[\s\S]*布布/.test(document.querySelector('.hero')?.innerText ?? ''), null, { timeout: 10000 }).catch(() => {});
   ok(/一二[\s\S]*布布/.test(await page.locator('.hero').innerText()), 'couple: names shown on home');
   await page.goto(BASE + '#/wardrobe');
   await page.click('.owner-tab:has-text("一二")');
@@ -213,6 +214,15 @@ try {
   const allItems = await page.locator('.garment-card').count();
   ok(herItems === allItems && hisItems === allItems - 1, `couple: owner filter (all ${allItems}, her ${herItems}, his ${hisItems})`);
   await page.screenshot({ path: path.join(OUT, `${tag}-couple-wardrobe.png`) });
+
+  // 深色模式：手動切換、重新整理後保留
+  await page.goto(BASE + '#/settings');
+  await page.click('[aria-label="外觀"] button:has-text("深色")');
+  await page.reload();
+  await page.waitForSelector('[aria-label="外觀"]');
+  const dark = await page.evaluate(() => ({ attr: document.documentElement.dataset.theme, bg: getComputedStyle(document.body).backgroundColor }));
+  ok(dark.attr === 'dark' && dark.bg === 'rgb(23, 22, 42)', `dark mode applied and kept after reload (${dark.bg})`);
+  await page.click('[aria-label="外觀"] button:has-text("跟隨系統")');
 
   // 8. 資料與隱私：CSP、用量、重複檢查、匯出
   ok(await page.evaluate(() => !!document.querySelector('meta[http-equiv="Content-Security-Policy"]')), 'CSP meta present in production build');
