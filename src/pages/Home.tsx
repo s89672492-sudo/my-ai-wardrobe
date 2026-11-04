@@ -8,7 +8,7 @@ import { listGarments } from '../lib/garments';
 import { currentSeason, recommend, type Recommendation } from '../recommend/engine';
 import { useImageUrl } from '../lib/useImageUrl';
 import type { Garment } from '../lib/types';
-import { Avatar, Bear } from '../components/Mascot';
+import { Avatar, Buddy } from '../components/Mascot';
 import { belongsTo, useCouple } from '../lib/couple';
 
 function greeting() {
@@ -143,7 +143,7 @@ function Cast({ who, name, id }: { who: 'her' | 'him'; name: string; id?: string
   const url = useImageUrl(id);
   return (
     <div className="cast">
-      {url ? <img className="cast-img" src={url} alt="" /> : <Bear who={who} pose={who === 'her' ? 'wave' : 'stand'} size={84} />}
+      {url ? <img className="cast-img" src={url} alt="" /> : <Buddy who={who} pose={who === 'her' ? 'wave' : 'stand'} size={84} />}
       <span className={`name-tag ${who}`}>{name}</span>
     </div>
   );

@@ -67,7 +67,7 @@ export function CoupleEditor() {
                 換頭像
                 <input type="file" accept="image/*" hidden onChange={(e) => { void pick(who, e.target.files?.[0]); e.target.value = ''; }} />
               </label>
-              {hasAvatar && <button className="link-btn" onClick={() => void reset(who)}>改回小熊</button>}
+              {hasAvatar && <button className="link-btn" onClick={() => void reset(who)}>改回小貓</button>}
             </div>
           );
         })}

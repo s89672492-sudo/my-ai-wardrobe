@@ -110,7 +110,7 @@ try {
   await page.click('button:has-text("完成去背")');
   await page.waitForSelector('.form');
   await page.click('.chip-grid .chip >> text=T-shirt');
-  await page.click('.owner-tab:has-text("小白")');
+  await page.click('.owner-tab:has-text("小花")');
   await page.click('.sticky-actions >> text=儲存');
   await page.waitForSelector('.specs');
   await page.click('button:has-text("試穿這件")');

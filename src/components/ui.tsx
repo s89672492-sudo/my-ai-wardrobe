@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { href, type Path } from '../lib/router';
 import { Icon, type IconName } from './Icon';
-import { Bear, CoupleBears } from './Mascot';
+import { Buddy, CoupleBuddies } from './Mascot';
 
 export function PageHeader({ title, subtitle, back, right }: { title: string; subtitle?: string; back?: Path; right?: ReactNode }) {
   return (
@@ -19,7 +19,7 @@ export function PageHeader({ title, subtitle, back, right }: { title: string; su
 export function EmptyState({ icon, mascot, title, children, action }: { icon: IconName; mascot?: 'her' | 'him' | 'couple'; title: string; children?: ReactNode; action?: ReactNode }) {
   return (
     <div className="empty">
-      {mascot ? <div className="empty-mascot">{mascot === 'couple' ? <CoupleBears size={76} /> : <Bear who={mascot} pose="wave" size={80} className="bob" />}</div>
+      {mascot ? <div className="empty-mascot">{mascot === 'couple' ? <CoupleBuddies size={76} /> : <Buddy who={mascot} pose="wave" size={80} className="bob" />}</div>
         : <div className="empty-icon"><Icon name={icon} size={36} /></div>}
       <h2>{title}</h2>
       {children && <p>{children}</p>}
