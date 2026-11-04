@@ -12,7 +12,8 @@ import { saveTryOn } from '../lib/tryons';
 import type { Garment, PersonPhoto, TryOnLayerRecord } from '../lib/types';
 import { useImageUrl } from '../lib/useImageUrl';
 import { NO_ADJUST, type Adjust } from '../tryon/bodyTargets';
-import { composeTryOn, releaseComposeMemory, type Layer } from '../tryon/compose';
+import type { ComposeInput, Layer } from '../tryon/compose';
+import { ComposeEngine } from '../tryon/compose-client';
 import { perfFor } from '../lib/compute';
 import { useSettings } from '../lib/settings';
 import { detectAnchors, KIND_OF, type GarmentAnchors, type TryOnKind } from '../tryon/garmentAnchors';
@@ -84,7 +85,9 @@ export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { per
   const perf = useMemo(() => perfFor(settings), [settings]);
   const shadingPct = settings.tryOnShading ?? 60;
   const lastDraft = useRef(0);
-  useEffect(() => () => releaseComposeMemory(), []);
+  // 合成引擎（背景 Worker）；離開試穿頁時結束並釋放記憶體
+  const engine = useMemo(() => new ComposeEngine(), []);
+  useEffect(() => () => engine.dispose(), [engine]);
   const flash = (t: string) => { setToast(t); setTimeout(() => setToast((x) => (x === t ? null : x)), 2600); };
   const dirty = () => setSaved({});
 
@@ -159,16 +162,21 @@ export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { per
     });
   }, [picked, adjusts, hidden, options]);
 
-  const compose = useCallback((draft: boolean, anchorsOn = showAnchors) => {
-    if (!photo || !person?.analysis || !layers.length) { setResult(null); return null; }
-    try {
-      const r = composeTryOn({ photo, mask, parse, shading: shadingPct / 100, analysis: person.analysis, layers, draft, showAnchors: anchorsOn, grid: perf.grid, draftGrid: perf.draftGrid });
+  const inputFor = useCallback((draft: boolean, anchorsOn: boolean): ComposeInput | null => {
+    if (!photo || !person?.analysis || !layers.length) return null;
+    return { photo, mask, parse, shading: shadingPct / 100, analysis: person.analysis, layers, draft, showAnchors: anchorsOn, grid: perf.grid, draftGrid: perf.draftGrid };
+  }, [photo, mask, parse, shadingPct, person, layers, perf]);
+
+  const compose = useCallback((draft: boolean) => {
+    const inp = inputFor(draft, showAnchors);
+    if (!inp) { setResult(null); return; }
+    engine.schedule(inp, (r) => {
+      if (r instanceof Error) { setError(`合成失敗：${r.message}`); return; }
       setResult(r);
       setError(null);
-      recordMetric(draft ? 'composeDraft' : 'compose', r.ms, `${layers.length} 件 ${photo.width}×${photo.height}`);
-      return r;
-    } catch (e) { setError(`合成失敗：${(e as Error).message}`); return null; }
-  }, [photo, mask, parse, shadingPct, person, layers, showAnchors, perf]);
+      recordMetric(draft ? 'composeDraft' : 'compose', r.ms, `${inp.layers.length} 件 ${inp.photo.width}×${inp.photo.height}${r.inWorker ? '' : '（主執行緒）'}`);
+    });
+  }, [engine, inputFor, showAnchors]);
 
   useEffect(() => {
     if (dragging) {
@@ -233,15 +241,18 @@ export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { per
 
   const records = (): TryOnLayerRecord[] => Object.entries(picked).map(([s, l]) => ({ garmentId: l!.garment.id, adjust: adjusts[s as Slot] ?? NO_ADJUST }));
   /** 儲存用的乾淨圖（不含錨點） */
-  const cleanCanvas = () => (showAnchors ? compose(false, false)?.canvas : result?.canvas) ?? null;
+  const cleanCanvas = async () => {
+    if (!showAnchors) return result?.canvas ?? null;
+    const inp = inputFor(false, false);
+    return inp ? (await engine.run(inp)).canvas : null;
+  };
 
   async function saveResult(): Promise<string | null> {
     if (saved.tryOnId) return saved.tryOnId;
-    const c = cleanCanvas();
+    const c = await cleanCanvas();
     if (!c || !person) return null;
     const t = await saveTryOn(person.id, records(), c, options);
     setSaved((s) => ({ ...s, tryOnId: t.id }));
-    if (showAnchors) compose(false);
     return t.id;
   }
   async function save() {
@@ -264,7 +275,7 @@ export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { per
     } catch (e) { setError((e as Error).message); } finally { setBusy(null); }
   }
   async function share() {
-    const c = cleanCanvas();
+    const c = await cleanCanvas();
     if (!c) return;
     const blob = await new Promise<Blob | null>((r) => c.toBlob(r, 'image/jpeg', 0.9));
     if (blob) await saveFile(new File([blob], `ai-tryon-${Date.now()}.jpg`, { type: 'image/jpeg' }));

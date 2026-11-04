@@ -9,9 +9,11 @@ const SettingsContext = createContext<Ctx>({ settings: DEFAULT_SETTINGS, update:
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => { loadSettings().then(setSettings, (e: Error) => setError(e.message)); }, []);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => { loadSettings().then((v) => { setSettings(v); setLoaded(true); }, (e: Error) => setError(e.message)); }, []);
   useEffect(() => { setImageProfile(settings.imageQuality); }, [settings.imageQuality]);
-  useEffect(() => { applyTheme(settings.theme ?? 'auto'); }, [settings.theme]);
+  // 設定讀完才套用；之前沿用 main.tsx 從 localStorage 預先套用的外觀（避免閃一下淺色）
+  useEffect(() => { if (loaded) applyTheme(settings.theme ?? 'auto'); }, [loaded, settings.theme]);
   const update = useCallback(async (p: Partial<AppSettings>) => {
     const next = { ...settings, ...p };
     setSettings(next);

@@ -118,6 +118,8 @@ try {
   await page.waitForSelector('text=本機合成', { timeout: 60000 });
   const ms1 = await page.locator('text=本機合成').innerText();
   ok(!(await page.locator('.alert-err').count()), `try-on composed (${ms1})`);
+  const lastCompose = await page.evaluate(() => { try { const m = JSON.parse(localStorage.getItem('wardrobe-metrics-v1') || '{}'); return m.compose?.at(-1)?.detail ?? ''; } catch { return ''; } });
+  ok(lastCompose && !lastCompose.includes('主執行緒'), `try-on composed in background worker (${lastCompose})`);
   await page.screenshot({ path: path.join(OUT, `${tag}-tryon.png`), fullPage: true });
   await page.click('button[role=tab]:has-text("手動調整")');
   await page.locator('.slider input').first().fill('1.15');

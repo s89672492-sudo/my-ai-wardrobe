@@ -40,7 +40,14 @@ export interface ComposeOutput { canvas: HTMLCanvasElement; notes: string[]; ms:
 /** 由下往上的圖層順序（Phase 5 會擴充多件組合） */
 export const Z: Record<TryOnKind, number> = { pants: 10, shorts: 10, skirt: 12, top: 20, dress: 20, outer: 30 };
 
-function canvas(w: number, h: number) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+/**
+ * 可在主執行緒或 Worker 執行：Worker 內沒有 document，改用 OffscreenCanvas（API 相容，型別沿用 HTMLCanvasElement）。
+ */
+const inWorker = typeof document === 'undefined';
+function canvas(w: number, h: number): HTMLCanvasElement {
+  if (inWorker) return new OffscreenCanvas(Math.max(1, w), Math.max(1, h)) as unknown as HTMLCanvasElement;
+  const c = document.createElement('canvas'); c.width = w; c.height = h; return c;
+}
 
 /**
  * 效能：遮罩、裁切範圍、手臂遮擋只和「人物照片 + 服裝種類」有關，和拖曳位置無關，
@@ -58,7 +65,7 @@ function cached(owner: object, key: string, make: () => HTMLCanvasElement | null
 /** 重複使用的暫存畫布（避免每格配置新的全尺寸畫布；iOS 對畫布總記憶體有上限） */
 const pool: HTMLCanvasElement[] = [];
 function scratch(w: number, h: number) {
-  const c = pool.pop() ?? document.createElement('canvas');
+  const c = pool.pop() ?? canvas(w, h);
   if (c.width !== w || c.height !== h) { c.width = w; c.height = h; } else ctx(c).clearRect(0, 0, w, h);
   const x = ctx(c); x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
   return c;
