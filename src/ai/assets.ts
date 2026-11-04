@@ -9,6 +9,8 @@ export const MODEL_URLS = {
 };
 /** 去背模型：只有在新增衣服時才下載（延遲載入） */
 export const CUTOUT_MODEL_URL = `${BASE}models/magic_touch.tflite`;
+/** 衣服分類模型：新增衣服時才下載 */
+export const CLASSIFIER_MODEL_URL = `${BASE}models/efficientnet_lite0.tflite`;
 /** 快取名稱綁定 LiteRT 版本：升級時 glue 與 wasm 必須一起更新，舊快取會被清除 */
 export const AI_CACHE_NAME = `ai-assets-litert-${__LITERT_VERSION__}-v1`;
 
@@ -22,7 +24,7 @@ export async function modelsCached(): Promise<boolean> {
   if (!('caches' in self)) return false;
   try {
     const c = await caches.open(AI_CACHE_NAME);
-    const hits = await Promise.all([...Object.values(MODEL_URLS), CUTOUT_MODEL_URL].map((u) => c.match(new URL(u, location.href).href)));
+    const hits = await Promise.all([...Object.values(MODEL_URLS), CUTOUT_MODEL_URL, CLASSIFIER_MODEL_URL].map((u) => c.match(new URL(u, location.href).href)));
     return hits.every(Boolean);
   } catch { return false; }
 }

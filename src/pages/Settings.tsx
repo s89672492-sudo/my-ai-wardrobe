@@ -3,7 +3,7 @@ import { Badge, ListLink, PageHeader } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { CoupleEditor } from '../components/CoupleEditor';
 import { AIClient } from '../ai/client';
-import { CUTOUT_MODEL_URL, MODEL_URLS, WASM_PATH, modelsCached } from '../ai/assets';
+import { CLASSIFIER_MODEL_URL, CUTOUT_MODEL_URL, MODEL_URLS, WASM_PATH, modelsCached } from '../ai/assets';
 import { formatMB, getStorageInfo, useOnline, type StorageInfo } from '../lib/platform';
 import { useSettings } from '../lib/settings';
 import { battery, perfFor } from '../lib/compute';
@@ -31,7 +31,7 @@ export function Settings() {
     const c = new AIClient();
     setDl('準備中');
     try {
-      const r = await c.init(WASM_PATH, 'wasm', { ...MODEL_URLS, magicTouch: CUTOUT_MODEL_URL }, setDl);
+      const r = await c.init(WASM_PATH, 'wasm', { ...MODEL_URLS, magicTouch: CUTOUT_MODEL_URL, classifier: CLASSIFIER_MODEL_URL }, setDl);
       if (r.type === 'ready' && r.models.every((m) => m.ok)) setMsg({ text: 'AI 模型已下載，之後可離線使用。', tone: 'ok' });
       else setMsg({ text: 'AI 模型下載不完整，請確認網路後再試一次。', tone: 'err' });
     } catch (e) {
@@ -86,7 +86,7 @@ export function Settings() {
           <span>離線使用</span>
           {cached === null ? null : cached ? <Badge tone="ok">已下載</Badge> : <Badge tone="warn">尚未下載</Badge>}
         </div>
-        <p className="muted">人體辨識模型約 21 MB、去背模型約 6 MB、執行環境約 3 MB，下載一次後在手機上執行。瀏覽器仍可能在空間不足時清除快取，屆時會自動重新下載。</p>
+        <p className="muted">人體辨識模型約 21 MB、去背與衣服分類模型約 11 MB、執行環境約 3 MB，下載一次後在手機上執行。瀏覽器仍可能在空間不足時清除快取，屆時會自動重新下載。</p>
         <button className="btn" disabled={!!dl || !online} onClick={() => void downloadModels()}>
           {dl ? `⏳ ${dl}` : !online ? '目前離線，無法下載' : cached ? '重新下載 AI 模型' : '下載 AI 模型'}
         </button>

@@ -501,3 +501,5 @@ nav[aria-label="主要導覽"] { view-transition-name: bottom-nav; }
 .ai-pill, .toast, .offline-bar, .inline-toast, .diag .privacy { color: var(--on-ink); }
 .toast .btn-primary { background: var(--pink); color: var(--on-accent); }
 .stage-busy { color: #2e2a4f; }
+.ai-suggest b { color: var(--ink); }
+.small-note .spinner { width: 12px; height: 12px; margin-right: 4px; }

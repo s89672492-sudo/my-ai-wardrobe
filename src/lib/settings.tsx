@@ -13,7 +13,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => { loadSettings().then((v) => { setSettings(v); setLoaded(true); }, (e: Error) => setError(e.message)); }, []);
   useEffect(() => { setImageProfile(settings.imageQuality); }, [settings.imageQuality]);
   // 設定讀完才套用；之前沿用 main.tsx 從 localStorage 預先套用的外觀（避免閃一下淺色）
-  useEffect(() => { if (loaded) applyTheme(settings.theme ?? 'auto'); }, [loaded, settings.theme]);
+  // 資料庫裡沒有外觀設定（例如剛切換就關閉 App）時，保留 localStorage 的選擇
+  useEffect(() => { if (loaded && settings.theme) applyTheme(settings.theme); }, [loaded, settings.theme]);
   const update = useCallback(async (p: Partial<AppSettings>) => {
     const next = { ...settings, ...p };
     setSettings(next);

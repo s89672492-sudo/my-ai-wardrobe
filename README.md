@@ -35,6 +35,7 @@
 | MoveNet SinglePose Lightning float16 v4 | 人體關鍵點 | 4.5 MB | Apache-2.0 |
 | MediaPipe Selfie Segmenter v1 | 人體輪廓 | 0.2 MB | Apache-2.0 |
 | MediaPipe Selfie Multiclass 256×256 v1 | 頭髮、皮膚、衣服 | 15.6 MB | Apache-2.0 |
+| MediaPipe EfficientNet-Lite0 int8 v1 | 衣服分類建議 | 5.2 MB | Apache-2.0 |
 | MediaPipe Interactive Segmenter (MagicTouch) v1 | 衣服去背 | 5.9 MB | Apache-2.0 |
 
 LiteRT.js 執行環境來自 npm 套件 `@litertjs/core`（`package-lock.json` 鎖定版本與完整性雜湊）。

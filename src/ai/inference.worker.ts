@@ -16,7 +16,7 @@ const models: Partial<Record<ModelName, LoadedModel>> = {};
 let backend: Accelerator = 'wasm';
 let runtimeLoaded = false;
 const cancelled = new Set<number>();
-const MODEL_LABEL: Record<ModelName, string> = { pose: '人體姿勢 MoveNet', segmenter: '人體分割 Selfie Segmenter', magicTouch: 'AI 去背 MagicTouch', parser: '人體部位分割 Multiclass' };
+const MODEL_LABEL: Record<ModelName, string> = { pose: '人體姿勢 MoveNet', segmenter: '人體分割 Selfie Segmenter', magicTouch: 'AI 去背 MagicTouch', parser: '人體部位分割 Multiclass', classifier: '衣服分類 EfficientNet-Lite0' };
 
 let cacheName = 'ai-assets';
 /** 已預先從 Cache Storage 取出的 glue 腳本（importScripts 是同步的，無法等待 Cache API） */
@@ -80,6 +80,7 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
     case 'process': void processFrame(msg); break;
     case 'cutout': void cutout(msg); break;
     case 'analyze': void analyze(msg); break;
+    case 'classify': void classify(msg); break;
     case 'cancel': cancelled.add(msg.targetId); break;
     case 'dispose': dispose(msg.id); break;
   }
@@ -512,6 +513,44 @@ async function runSegmenter(src: ImageBitmap) {
     const bitmap = await createImageBitmap(c, lb.dx, lb.dy, lb.scaledW, lb.scaledH);
     return { bitmap, width: lb.scaledW, height: lb.scaledH };
   } finally { outs.forEach((t) => t.delete()); }
+}
+
+/**
+ * 衣服分類（EfficientNet-Lite0 int8，ImageNet 1000 類）：輸入 uint8 [1,224,224,3]，
+ * 衣服置中放在白底上（與商品照相同），輸出 uint8 [1,1000]（量化後的機率）。
+ */
+async function classify(msg: Extract<WorkerRequest, { type: 'classify' }>) {
+  const { bitmap, id } = msg;
+  try {
+    const m = models.classifier;
+    if (!m) throw new Error('分類模型尚未載入');
+    const t0 = performance.now();
+    const lb = computeLetterbox(bitmap.width, bitmap.height, m.w, m.h);
+    const c = new OffscreenCanvas(m.w, m.h);
+    const ctx = c.getContext('2d', { willReadFrequently: true })!;
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, m.w, m.h);
+    ctx.drawImage(bitmap, lb.dx, lb.dy, lb.scaledW, lb.scaledH);
+    const rgba = ctx.getImageData(0, 0, m.w, m.h).data;
+    const n = m.w * m.h;
+    const rgb = m.dtype === 'uint8' ? new Uint8Array(n * 3) : new Float32Array(n * 3);
+    const f = m.dtype === 'uint8' ? 1 : 1 / 255;
+    for (let i = 0; i < n; i++) { rgb[i * 3] = rgba[i * 4]! * f; rgb[i * 3 + 1] = rgba[i * 4 + 1]! * f; rgb[i * 3 + 2] = rgba[i * 4 + 2]! * f; }
+    const input = new Tensor(rgb, [1, m.h, m.w, 3]);
+    let outs: Tensor[];
+    try { outs = await m.model.run([input]); } finally { input.delete(); }
+    try {
+      const raw = await outs[0]!.data();
+      const scale = raw instanceof Uint8Array ? 1 / 255 : 1;
+      const all = Array.from(raw as ArrayLike<number>, (v, index) => ({ index, score: v * scale }));
+      all.sort((a, b) => b.score - a.score);
+      post({ type: 'classifyResult', id, top: all.slice(0, 15), ms: performance.now() - t0 });
+    } finally { outs.forEach((t) => t.delete()); }
+  } catch (err) {
+    post({ type: 'error', id, stage: 'classify', message: errMsg(err) });
+  } finally {
+    bitmap.close();
+    cancelled.delete(id);
+  }
 }
 
 /** 下載並驗證 .tflite（檔頭第 4~7 位元組為 "TFL3"），避免把 404 頁面當模型載入。 */

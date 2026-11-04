@@ -1,6 +1,6 @@
 /** 主執行緒 ↔ AI Worker 的訊息協定。 */
 export type Accelerator = 'webgpu' | 'wasm';
-export type ModelName = 'segmenter' | 'pose' | 'magicTouch' | 'parser';
+export type ModelName = 'segmenter' | 'pose' | 'magicTouch' | 'parser' | 'classifier';
 
 export interface Keypoint { name: string; x: number; y: number; score: number }
 
@@ -11,6 +11,8 @@ export type WorkerRequest =
   | { type: 'cutout'; id: number; bitmap: ImageBitmap; points: { x: number; y: number }[] }
   /** 全身分析：姿勢 → 依人體範圍裁切 → 第二次姿勢 + 分割（提高解析度） */
   | { type: 'analyze'; id: number; bitmap: ImageBitmap; /** 已知關鍵點（例如手動校正後重新分割）：略過姿勢推論 */ keypointsHint?: Keypoint[] }
+  /** 衣服分類：輸入去背後放在白底的衣服圖，回傳前幾名的 ImageNet 類別 */
+  | { type: 'classify'; id: number; bitmap: ImageBitmap }
   | { type: 'cancel'; id: number; targetId: number }
   | { type: 'dispose'; id: number };
 
@@ -28,6 +30,7 @@ export type WorkerResponse =
       timings: { poseMs?: number; segmentMs?: number; parseMs?: number; totalMs: number };
     }
   | { type: 'cutoutResult'; id: number; mask: ImageBitmap; ms: number }
+  | { type: 'classifyResult'; id: number; top: { index: number; score: number }[]; ms: number }
   | {
       type: 'analyzeResult'; id: number;
       keypoints: Keypoint[];

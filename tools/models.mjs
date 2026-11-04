@@ -19,6 +19,12 @@ export const MODELS = [
     sha256: 'c6748b1253a99067ef71f7e26ca71096cd449baefa8f101900ea23016507e0e0',
   },
   {
+    file: 'efficientnet_lite0.tflite',
+    // MediaPipe Image Classifier EfficientNet-Lite0 int8 版本 1（ImageNet），Apache-2.0；新增衣服時建議分類
+    url: 'https://storage.googleapis.com/mediapipe-models/image_classifier/efficientnet_lite0/int8/1/efficientnet_lite0.tflite',
+    sha256: 'bc2ffe19c1118de0c0c2a9088992da5589722656e0fba81421385300a4a34b16',
+  },
+  {
     file: 'magic_touch.tflite',
     // MediaPipe Interactive Segmenter（MagicTouch）float32 版本 1，Apache-2.0；衣服 AI 去背
     url: 'https://storage.googleapis.com/mediapipe-models/interactive_segmenter/magic_touch/float32/1/magic_touch.tflite',

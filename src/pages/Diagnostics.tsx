@@ -302,7 +302,7 @@ function Row({ k, v }: { k: string; v: string }) { return <><dt>{k}</dt><dd>{v}<
 const yn = (b: boolean) => (b ? '✅' : '❌');
 const avg = (a: number[]) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0);
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
-const modelZh = (m: ModelLoadInfo) => ({ pose: '姿勢模型 MoveNet', segmenter: '分割模型 Selfie Segmenter', parser: '部位模型 Multiclass', magicTouch: '去背模型 MagicTouch' })[m.name];
+const modelZh = (m: ModelLoadInfo) => ({ pose: '姿勢模型 MoveNet', segmenter: '分割模型 Selfie Segmenter', parser: '部位模型 Multiclass', magicTouch: '去背模型 MagicTouch', classifier: '分類模型 EfficientNet' })[m.name];
 function friendly(msg?: string) {
   if (!msg) return '未知錯誤';
   if (/404|Failed to fetch|NetworkError|HTTP/.test(msg)) return `模型檔案下載失敗，請確認網路連線或模型是否已部署（${msg}）`;

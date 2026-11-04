@@ -10,6 +10,8 @@ import { getDB } from '../lib/db';
 import { getStorageInfo } from '../lib/platform';
 import { navigate } from '../lib/router';
 import { CATEGORIES, type Garment } from '../lib/types';
+import { classifyGarment, releaseClassifier } from '../ai/garment-classify';
+import type { CategorySuggestion } from '../ai/category';
 
 type Step = 'pick' | 'crop' | 'cutout' | 'details';
 const EMPTY: GarmentMeta = { name: '', category: 'tshirt', color: '', brand: '', size: '', seasons: [], notes: '', favorite: 0, styles: [], owner: 'both' };
@@ -27,6 +29,9 @@ export function GarmentEditor({ id }: { id?: string }) {
   const [dupe, setDupe] = useState<Garment | null>(null);
   const hash = useRef('');
   const metaTouched = useRef(false);
+  const categoryTouched = useRef(false);
+  const [suggest, setSuggest] = useState<CategorySuggestion | 'loading' | 'none' | null>(null);
+  useEffect(() => () => { void releaseClassifier(); }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -87,6 +92,14 @@ export function GarmentEditor({ id }: { id?: string }) {
         thumbSrc = out;
         const guess = guessColor(data);
         setMeta((m) => (m.color ? m : { ...m, color: guess }));
+        // AI 分類建議（背景執行，不影響下一步）；使用者還沒自己選分類時才自動套用
+        if (!existing) {
+          setSuggest('loading');
+          void classifyGarment(out).then((sg) => {
+            setSuggest(sg ?? 'none');
+            if (sg && sg.confidence >= 0.08 && !categoryTouched.current) setMeta((m) => ({ ...m, category: sg.category }));
+          });
+        }
       }
       const tb = await makeThumbnail(thumbSrc);
       setImages({ original, cutout, thumb: { blob: tb, width: LIMITS.thumbSide, height: Math.round(LIMITS.thumbSide * 4 / 3) } });
@@ -192,7 +205,12 @@ export function GarmentEditor({ id }: { id?: string }) {
             </div>
           )}
           {images && !images.cutout && <p className="muted">此衣服未去背，AI 試穿時效果會較差。</p>}
-          <GarmentForm value={meta} onChange={(v) => { metaTouched.current = true; setMeta(v); }} />
+          {suggest === 'loading' && <p className="muted small-note"><span className="spinner" /> AI 正在判斷衣服種類…</p>}
+          {suggest && typeof suggest === 'object' && suggest.confidence >= 0.08 && (
+            <p className="muted small-note ai-suggest">AI 建議分類：<b>{CATEGORIES.find((c) => c.id === suggest.category)?.label}</b>（{suggest.reason}）{categoryTouched.current && meta.category !== suggest.category ? '，你已選擇其他分類' : '，不對可以直接改'}</p>
+          )}
+          {(suggest === 'none' || (typeof suggest === 'object' && suggest !== null && suggest.confidence < 0.08)) && <p className="muted small-note">AI 無法判斷這件衣服的種類，請手動選擇分類。</p>}
+          <GarmentForm value={meta} onChange={(v) => { metaTouched.current = true; if (v.category !== meta.category) categoryTouched.current = true; setMeta(v); }} />
           <div className="sticky-actions">
             <button className="btn btn-primary" disabled={!!busy} onClick={() => void save()}>{busy ?? '儲存'}</button>
           </div>

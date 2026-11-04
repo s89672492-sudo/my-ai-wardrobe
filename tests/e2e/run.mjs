@@ -110,6 +110,9 @@ try {
   await idle();
   await page.click('button:has-text("完成去背")');
   await page.waitForSelector('.form');
+  await page.waitForSelector('.ai-suggest', { timeout: 60000 }).catch(() => {});
+  const sug = await page.locator('.ai-suggest').innerText().catch(() => '');
+  ok(/T-shirt/.test(sug), `AI category suggestion for the T-shirt photo (${sug.replace(/\n/g, ' ')})`);
   await page.click('.chip-grid .chip >> text=T-shirt');
   await page.click('.owner-tab:has-text("小花")');
   await page.click('.sticky-actions >> text=儲存');
@@ -220,6 +223,7 @@ try {
   // 深色模式：手動切換、重新整理後保留
   await page.goto(BASE + '#/settings');
   await page.click('[aria-label="外觀"] button:has-text("深色")');
+  await page.waitForTimeout(300);
   await page.reload();
   await page.waitForSelector('[aria-label="外觀"]');
   const dark = await page.evaluate(() => ({ attr: document.documentElement.dataset.theme, bg: getComputedStyle(document.body).backgroundColor }));

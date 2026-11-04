@@ -68,6 +68,10 @@ export class AIClient {
     return this.send({ type: 'cutout', bitmap, points } as WorkerRequest, [bitmap], onProgress);
   }
 
+  classify(bitmap: ImageBitmap) {
+    return this.send({ type: 'classify', bitmap } as WorkerRequest, [bitmap]);
+  }
+
   analyze(bitmap: ImageBitmap, onProgress?: (s: string) => void, keypointsHint?: Keypoint[]) {
     return this.send({ type: 'analyze', bitmap, keypointsHint } as WorkerRequest, [bitmap], onProgress);
   }
