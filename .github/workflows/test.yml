@@ -5,6 +5,10 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+# 連續推送時，舊的測試直接取消（只需要最新一次的結果）
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   e2e:
     runs-on: ubuntu-latest
@@ -22,7 +26,16 @@ jobs:
       - run: npm run fetch-models
       - run: npm run build
       - run: npm run verify-dist
+      # Playwright 瀏覽器快取（版本由 package-lock 決定）
+      - uses: actions/cache@v4
+        id: pw
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npx playwright install --with-deps chromium
+        if: steps.pw.outputs.cache-hit != 'true'
+      - run: npx playwright install-deps chromium
+        if: steps.pw.outputs.cache-hit == 'true'
       - name: E2E（模擬 iPhone 13 與 Pixel 7，本機 AI 推論）
         run: |
           npx vite preview --port 4173 --strictPort &
