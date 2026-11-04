@@ -9,8 +9,8 @@ export type Route =
 
 export type Path = '/' | '/wardrobe' | '/wardrobe/new' | `/wardrobe/item/${string}` | '/tryon' | '/tryon/person/new' | `/tryon/person/${string}` | `/tryon/studio/${string}` | '/outfits' | '/settings' | '/settings/diagnostics' | '/settings/data' | '/settings/acceptance';
 
-function parse(): Route {
-  const h = decodeURIComponent(location.hash.replace(/^#/, '')).split('?')[0] || '/';
+function parse(hash = location.hash): Route {
+  const h = decodeURIComponent(hash.replace(/^#/, '')).split('?')[0] || '/';
   const m = h.match(/^\/wardrobe\/item\/([\w-]+)(\/edit)?$/);
   if (m) return m[2] ? { name: 'garment-edit', id: m[1]! } : { name: 'garment', id: m[1]! };
   if (h === '/tryon/person/new') return { name: 'person-new' };
@@ -37,33 +37,37 @@ function parse(): Route {
 
 type VT = { finished: Promise<void>; ready: Promise<void>; updateCallbackDone: Promise<void> };
 let activeTransition: VT | null = null;
+/** 已開始轉場、但畫面還沒換過去的換頁 */
+let pending: { h: string; done: boolean } | null = null;
 
 export function useRoute(): Route {
-  // 以網址字串為狀態：重複設定同一個值不會多渲染，轉場被略過時也能補回正確頁面
   const [hash, setHash] = useState(() => location.hash);
   useEffect(() => {
     // 換頁：支援 View Transitions 的瀏覽器（iOS 18+ Safari、Chrome）用淡出淡入；
     // 捲回頂端在轉場「之內」完成，畫面不會先跳一下。系統設定「減少動態效果」時直接切換。
+    const commit = (h: string) => { setHash(h); window.scrollTo(0, 0); };
     const on = () => {
-      const apply = () => { setHash(location.hash); window.scrollTo(0, 0); };
+      const h = location.hash;
+      // 連續換頁（例如 A → B → A 間隔很短）：先把還沒換過去的頁面確實換過去，
+      // 否則 React 會以為一直停在 A，沿用舊頁面的狀態（例如卡在「儲存中」）
+      if (pending && !pending.done) { const p = pending; p.done = true; flushSync(() => commit(p.h)); }
       const doc = document as Document & { startViewTransition?: (cb: () => void) => VT };
       const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-      // 上一個轉場還沒結束（快速連點）就直接切換，不疊加轉場
-      if (!doc.startViewTransition || reduce || activeTransition || document.visibilityState !== 'visible') { apply(); return; }
-      const t = doc.startViewTransition(() => flushSync(apply));
+      if (!doc.startViewTransition || reduce || activeTransition || document.visibilityState !== 'visible') { commit(h); return; }
+      const p = { h, done: false };
+      pending = p;
+      // 轉場的回呼可能晚到；若期間又換頁（p.done），就不再套用這個過期的網址
+      const t = doc.startViewTransition(() => { if (!p.done) { p.done = true; flushSync(() => commit(h)); } });
       activeTransition = t;
       const ignore = () => { /* 轉場被略過只影響動畫，不是錯誤 */ };
       t.ready.catch(ignore);
       t.updateCallbackDone.catch(ignore);
-      void t.finished.catch(ignore).finally(() => {
-        if (activeTransition === t) activeTransition = null;
-        setHash(location.hash); // 保險：確保畫面停在目前網址的頁面
-      });
+      void t.finished.catch(ignore).finally(() => { if (activeTransition === t) activeTransition = null; });
     };
     addEventListener('hashchange', on);
     return () => removeEventListener('hashchange', on);
   }, []);
-  return useMemo(() => parse(), [hash]); // eslint-disable-line react-hooks/exhaustive-deps
+  return useMemo(() => parse(hash), [hash]);
 }
 
 export function navigate(to: Path, replace = false) {
