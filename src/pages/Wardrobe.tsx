@@ -51,9 +51,9 @@ export function Wardrobe() {
       <PageHeader title="我的衣櫥" subtitle={items ? `共 ${items.length} 件` : undefined}
         right={<a className="btn btn-small btn-primary" href={href('/wardrobe/new')}><Icon name="plus" size={18} /> 新增</a>} />
       <div className="owner-tabs" role="tablist" aria-label="誰的衣服">
-        <button role="tab" aria-selected={who === 'all'} className={`owner-tab ${who === 'all' ? 'on' : ''}`} onClick={() => setWho('all')}><OwnerAvatar owner="both" size={24} /> 全部</button>
-        <button role="tab" aria-selected={who === 'her'} className={`owner-tab ${who === 'her' ? 'on' : ''}`} onClick={() => setWho('her')}><Avatar who="her" size={26} /> {couple.herName}</button>
-        <button role="tab" aria-selected={who === 'him'} className={`owner-tab ${who === 'him' ? 'on' : ''}`} onClick={() => setWho('him')}><Avatar who="him" size={26} /> {couple.himName}</button>
+        <button role="tab" aria-selected={who === 'all'} className={`owner-tab who-both ${who === 'all' ? 'on' : ''}`} onClick={() => setWho('all')}><OwnerAvatar owner="both" size={24} /> 全部</button>
+        <button role="tab" aria-selected={who === 'her'} className={`owner-tab who-her ${who === 'her' ? 'on' : ''}`} onClick={() => setWho('her')}><Avatar who="her" size={26} /> {couple.herName}</button>
+        <button role="tab" aria-selected={who === 'him'} className={`owner-tab who-him ${who === 'him' ? 'on' : ''}`} onClick={() => setWho('him')}><Avatar who="him" size={26} /> {couple.himName}</button>
       </div>
       <label className="search" style={{ marginTop: 12 }}>
         <Icon name="search" size={20} />

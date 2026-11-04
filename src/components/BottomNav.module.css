@@ -1,19 +1,14 @@
+/* 浮動貼紙導覽列 */
 .nav {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+  position: fixed; left: 12px; right: 12px; bottom: calc(8px + env(safe-area-inset-bottom)); z-index: 20;
+  max-width: 576px; margin: 0 auto;
   display: grid; grid-template-columns: repeat(5, 1fr);
-  background: rgba(255, 248, 240, 0.94);
-  -webkit-backdrop-filter: saturate(160%) blur(20px); backdrop-filter: saturate(160%) blur(20px);
-  border-top: 2px solid var(--line);
-  border-radius: 22px 22px 0 0;
-  padding-bottom: env(safe-area-inset-bottom);
+  background: #fff; border: 2.5px solid var(--ink); border-radius: 26px; box-shadow: 0 4px 0 var(--ink);
+  padding: 4px;
 }
 .tab {
-  position: relative;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-  min-height: 62px; color: var(--muted); text-decoration: none; font-size: 11px; font-weight: 600;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  min-height: 54px; color: var(--muted); text-decoration: none; font-size: 11px; font-weight: 700; border-radius: 20px;
   -webkit-tap-highlight-color: transparent;
 }
-.tab svg { transition: transform .2s; }
-.active { color: var(--fg); }
-.active svg { transform: translateY(-2px) scale(1.08); color: var(--fg); }
-.active::after { content: ''; position: absolute; bottom: 6px; width: 5px; height: 5px; border-radius: 50%; background: var(--pink); }
+.active { color: var(--ink); background: var(--butter); }

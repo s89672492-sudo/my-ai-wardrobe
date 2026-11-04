@@ -8,7 +8,7 @@ import { listGarments } from '../lib/garments';
 import { currentSeason, recommend, type Recommendation } from '../recommend/engine';
 import { useImageUrl } from '../lib/useImageUrl';
 import type { Garment } from '../lib/types';
-import { Avatar, CoupleBears } from '../components/Mascot';
+import { Avatar, Bear } from '../components/Mascot';
 import { belongsTo, useCouple } from '../lib/couple';
 
 function greeting() {
@@ -48,13 +48,16 @@ export function Home() {
 
   return (
     <div className="page">
-      <header className="home-hero cute">
-        <div>
-          <p className="eyebrow">{today}</p>
-          <p className="names">{couple.herName} <b>♥</b> {couple.himName}</p>
-          <h1>{greeting()}，<br /><span>今天想穿什麼？</span></h1>
+      <header className="hero">
+        <p className="hero-date">{today}</p>
+        <div className="hero-stage">
+          <div className="bubble"><h1>{greeting()}！<br />今天想穿什麼？</h1></div>
+          <div className="hero-cast" aria-label={`${couple.herName}和${couple.himName}`}>
+            <Cast who="her" name={couple.herName} id={couple.herAvatarId} />
+            <svg className="cast-heart" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 21s-8-5-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 6-8 11-8 11z" fill="#ff8fb1" stroke="#2e2a4f" strokeWidth="2" /></svg>
+            <Cast who="him" name={couple.himName} id={couple.himAvatarId} />
+          </div>
         </div>
-        <CoupleBears size={68} />
       </header>
 
       {err && <div className="alert alert-err">{err}</div>}
@@ -70,7 +73,7 @@ export function Home() {
         <a href={href('/outfits')} className="stat"><strong>{counts?.tryons ?? '–'}</strong><span>次試穿</span></a>
       </section>
       {owned && owned.her + owned.him > 0 && (
-        <p className="muted center owned-line">{couple.herName}的衣服 {owned.her} 件 · {couple.himName}的衣服 {owned.him} 件</p>
+        <p className="muted center owned-line">{couple.herName}有 {owned.her} 件、{couple.himName}有 {owned.him} 件自己的衣服</p>
       )}
 
       {picks.length > 0 && (
@@ -134,4 +137,14 @@ export function Home() {
 function Thumb({ g }: { g: Garment }) {
   const url = useImageUrl(g.thumbImageId);
   return <div className="today-thumb">{url && <img src={url} alt={g.name} />}<span>{g.name}</span></div>;
+}
+
+function Cast({ who, name, id }: { who: 'her' | 'him'; name: string; id?: string }) {
+  const url = useImageUrl(id);
+  return (
+    <div className="cast">
+      {url ? <img className="cast-img" src={url} alt="" /> : <Bear who={who} pose={who === 'her' ? 'wave' : 'stand'} size={84} />}
+      <span className={`name-tag ${who}`}>{name}</span>
+    </div>
+  );
 }

@@ -64,7 +64,7 @@ export function RecommendPanel() {
       <p className="muted small-note"><Icon name="shield" size={14} /> 依你衣櫥裡的衣服，在手機上用規則計算，不使用雲端 AI</p>
       <div className="owner-tabs two" role="tablist" aria-label="幫誰搭配">
         {(['her', 'him'] as const).map((w) => (
-          <button key={w} role="tab" aria-selected={who === w} className={`owner-tab ${who === w ? 'on' : ''}`} onClick={() => setWho(w)}><Avatar who={w} size={26} /> 幫{couple.nameOf(w)}搭</button>
+          <button key={w} role="tab" aria-selected={who === w} className={`owner-tab who-${w} ${who === w ? 'on' : ''}`} onClick={() => setWho(w)}><Avatar who={w} size={26} /> 幫{couple.nameOf(w)}搭</button>
         ))}
       </div>
       <div className="segmented four" role="tablist" aria-label="推薦方式" style={{ marginTop: 10 }}>

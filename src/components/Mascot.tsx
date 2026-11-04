@@ -8,7 +8,7 @@ import { useImageUrl } from '../lib/useImageUrl';
  * - 他：奶茶色小熊，淺色口鼻、黑鼻頭、胸前小星星
  * 使用者若在設定上傳自訂頭像，頭像只存在這支手機的 IndexedDB，不會上傳或部署。
  */
-const INK = '#5a3e2b';
+const INK = '#2e2a4f';
 
 export function Bear({ who, size = 64, pose = 'stand', className }: { who: 'her' | 'him'; size?: number; pose?: 'stand' | 'wave' | 'face'; className?: string }) {
   const her = who === 'her';

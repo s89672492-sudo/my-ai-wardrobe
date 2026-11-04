@@ -201,7 +201,7 @@ try {
   ok(await page.locator('.couple-person').first().locator('.avatar img').count() === 1, 'couple: custom avatar saved locally');
   await page.goto(BASE + '#/');
   await page.reload();
-  ok(/一二\s*♥\s*布布/.test(await page.locator('.home-hero').innerText()), 'couple: names shown on home');
+  ok(/一二[\s\S]*布布/.test(await page.locator('.hero').innerText()), 'couple: names shown on home');
   await page.goto(BASE + '#/wardrobe');
   await page.click('.owner-tab:has-text("一二")');
   const herItems = await page.locator('.garment-card').count();

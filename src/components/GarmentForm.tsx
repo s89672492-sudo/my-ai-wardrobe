@@ -23,7 +23,7 @@ export function GarmentForm({ value, onChange }: { value: GarmentMeta; onChange:
         <span>這是誰的衣服</span>
         <div className="owner-tabs" role="radiogroup" aria-label="這是誰的衣服" style={{ marginTop: 0 }}>
           {(['her', 'him', 'both'] as const).map((o) => (
-            <button type="button" role="radio" aria-checked={(value.owner ?? 'both') === o} key={o} className={`owner-tab ${(value.owner ?? 'both') === o ? 'on' : ''}`} onClick={() => set('owner', o)}>
+            <button type="button" role="radio" aria-checked={(value.owner ?? 'both') === o} key={o} className={`owner-tab who-${o} ${(value.owner ?? 'both') === o ? 'on' : ''}`} onClick={() => set('owner', o)}>
               <OwnerAvatar owner={o} size={24} /> {couple.nameOf(o)}
             </button>
           ))}

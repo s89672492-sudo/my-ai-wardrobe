@@ -1,8 +1,10 @@
 :root {
-  /* 可愛奶茶色主題：奶油底、可可棕文字、粉紅點綴 */
-  --bg: #fff8f0; --fg: #5a3e2b; --card: #f8ebdd; --card-2: #f0dcc8; --muted: #a0846f; --line: #f0e0cf;
-  --surface: #fffdfa; --pink: #ff8fa3; --pink-soft: #ffe3e8; --latte: #d4a77f;
-  --ok: #4f9a6a; --warn: #c27a2c; --err: #d9534f; --radius: 24px; --nav-h: 62px;
+  /* 貼紙手帳主題：牛奶藍點點底、靛紫墨線、草莓粉（她）、天空藍（他）、奶油黃（共用／重點） */
+  --bg: #eef3fb; --fg: #2e2a4f; --card: #ffffff; --card-2: #e3eaf6; --muted: #625f86; --line: #d5ddec;
+  --surface: #f4f7fd; --ink: #2e2a4f;
+  --pink: #ff8fb1; --pink-soft: #ffe4ee; --sky: #74bdf2; --sky-soft: #e1f1ff; --butter: #ffd966; --butter-soft: #fff4cc; --mint: #8fe3c8;
+  --ok: #1f7a57; --warn: #9a5b00; --err: #c62f45; --radius: 20px; --nav-h: 66px;
+  --sticker: 0 4px 0 var(--ink);
   color-scheme: light;
   font-family: ui-rounded, "SF Pro Rounded", "Hiragino Maru Gothic ProN", "Arial Rounded MT Bold", -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
 }
@@ -13,7 +15,7 @@ a { color: inherit; }
 button { font: inherit; color: inherit; }
 input, select, textarea { font: inherit; font-size: 16px; } /* 16px 避免 iOS 自動放大 */
 
-.app-main { padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 24px); }
+.app-main { padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 36px); }
 .page { max-width: 600px; margin: 0 auto; padding: calc(12px + env(safe-area-inset-top)) 16px 0; }
 
 /* 標題 */
@@ -108,7 +110,7 @@ input, select, textarea { font: inherit; font-size: 16px; } /* 16px 避免 iOS �
 
 /* 全域狀態 */
 .offline-bar { position: sticky; top: 0; z-index: 30; display: flex; justify-content: center; align-items: center; gap: 6px; background: var(--fg); color: #fff; font-size: 13px; padding: calc(6px + env(safe-area-inset-top)) 12px 6px; }
-.toast { position: fixed; left: 16px; right: 16px; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 12px); z-index: 40; max-width: 568px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 12px; background: var(--fg); color: #fff; border-radius: 16px; padding: 12px 12px 12px 16px; box-shadow: 0 8px 24px rgba(0,0,0,.2); }
+.toast { position: fixed; left: 16px; right: 16px; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 22px); z-index: 40; max-width: 568px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 12px; background: var(--fg); color: #fff; border-radius: 16px; padding: 12px 12px 12px 16px; box-shadow: 0 8px 24px rgba(0,0,0,.2); }
 .toast .btn-primary { background: var(--surface); color: var(--fg); }
 
 /* 技術檢測頁（沿用 Phase 0） */
@@ -328,62 +330,116 @@ a.garment-card { text-decoration: none; display: block; }
 .accept-marks .chip.on.fail { background: var(--err); border-color: var(--err); }
 .accept-marks .chip.on.skip { background: var(--muted); border-color: var(--muted); }
 
-/* ===== 可愛主題：情侶小熊 ===== */
-h1, h2, .btn, .chip, .stat strong { letter-spacing: 0 !important; }
-.btn { border-radius: 999px; box-shadow: 0 2px 0 rgba(90,62,43,.08); }
-.btn-primary { background: var(--fg); box-shadow: 0 3px 0 #3f2a1c; }
-.btn-primary:active { box-shadow: 0 1px 0 #3f2a1c; transform: translateY(2px); }
-.card, .stat, .feature-card { box-shadow: 0 2px 0 rgba(90,62,43,.06); }
-.chip { border-color: var(--card-2); }
-.chip.on { background: var(--fg); border-color: var(--fg); }
-.search { background: var(--surface); border: 2px solid var(--card); }
-.field input, .field textarea { background: var(--surface); border: 2px solid var(--card); }
-.field input:focus, .field textarea:focus { box-shadow: none; border-color: var(--pink); }
-.feature-card.dark { background: linear-gradient(135deg, #6b4a34, #5a3e2b); }
-.feature-card.dark p { color: #e8d3c0; }
-.empty-icon { background: var(--pink-soft); color: var(--fg); }
-.home-hero h1 { font-size: 28px; }
-.page-header h1 { font-size: 28px; }
+/* ===== 貼紙手帳主題 ===== */
+body { background-color: var(--bg); background-image: radial-gradient(#d3dcee 1.3px, transparent 1.4px); background-size: 18px 18px; }
+h1, h2 { letter-spacing: 0 !important; }
+.page-header h1 { font-size: 28px; font-weight: 800; }
+.section-title { color: var(--ink); font-size: 14px; font-weight: 700; letter-spacing: 0; }
+:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
 
-.avatar { display: inline-grid; place-items: center; border-radius: 50%; overflow: hidden; flex: none; background: var(--pink-soft); border: 2px solid var(--surface); box-shadow: 0 0 0 1.5px var(--card-2); }
-.avatar-him { background: #f3e2d0; }
+/* 卡片：一般為白底細框；重要內容為「貼紙」：墨線粗框 + 硬陰影 */
+.card { background: var(--card); border: 2px solid var(--line); box-shadow: none; }
+.sticker, .feature-card, .today, .rec-card { background: var(--card); border: 2.5px solid var(--ink); box-shadow: var(--sticker); border-radius: 22px; }
+.feature-card.dark { background: var(--ink); color: #fff; }
+.feature-card.dark p { color: #d9d6f2; }
+.feature-card.dark .feature-kicker { color: var(--butter); }
+
+/* 按鈕 */
+.btn { border-radius: 999px; border: 2px solid var(--ink); background: var(--card); color: var(--ink); box-shadow: 0 3px 0 var(--ink); }
+.btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.btn-primary { background: var(--pink); color: var(--ink); }
+.btn-danger { color: var(--err); border-color: var(--err); box-shadow: 0 3px 0 var(--err); }
+.btn-small { box-shadow: 0 2px 0 var(--ink); }
+.toast .btn-primary, .stage-busy .btn-small { box-shadow: none; }
+.link-btn { color: var(--muted); }
+
+/* 標籤與輸入 */
+.chip { border: 2px solid var(--line); background: var(--card); color: var(--ink); font-weight: 600; }
+.chip.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.search { background: var(--card); border: 2px solid var(--line); }
+.search:focus-within { border-color: var(--ink); }
+.field input, .field textarea { background: var(--card); border: 2px solid var(--line); }
+.field input:focus, .field textarea:focus { box-shadow: none; border-color: var(--ink); }
+.segmented { background: var(--card-2); }
+.segmented button.on { background: var(--card); box-shadow: 0 2px 0 var(--ink); border: 2px solid var(--ink); }
+.badge { border: 1.5px solid currentColor; background: var(--card); }
+.empty-icon { background: var(--butter-soft); border: 2.5px solid var(--ink); color: var(--ink); }
+.step-no, .rec-rank { background: var(--butter); color: var(--ink); border: 2px solid var(--ink); }
+.tool.on { background: var(--ink); }
+.offline-bar, .toast, .inline-toast { background: var(--ink); }
+.ai-pill { background: var(--ink); }
+.list-row { border-top: 2px dashed var(--line); }
+
+/* 首頁：對話泡泡 + 兩隻熊 */
+.hero { padding: 14px 0 4px; }
+.hero-date { color: var(--muted); font-size: 14px; margin: 0 4px 10px; }
+.hero-stage { position: relative; padding: 20px 16px 14px; background: linear-gradient(180deg, var(--sky-soft), #fff 70%); border: 2.5px solid var(--ink); border-radius: 28px; box-shadow: var(--sticker); overflow: hidden; }
+.hero-stage::after { content: ''; position: absolute; left: -10%; right: -10%; bottom: -36px; height: 70px; background: var(--mint); border-top: 2.5px solid var(--ink); border-radius: 50% 50% 0 0; }
+.bubble { position: relative; z-index: 1; margin: 0 auto 6px; max-width: 280px; background: #fff; border: 2.5px solid var(--ink); border-radius: 24px; padding: 12px 18px; text-align: center; }
+.bubble::after { content: ''; position: absolute; left: 34%; bottom: -12px; width: 18px; height: 18px; background: #fff; border-right: 2.5px solid var(--ink); border-bottom: 2.5px solid var(--ink); transform: rotate(45deg); border-radius: 0 0 6px 0; }
+.bubble h1 { margin: 0; font-size: 22px; line-height: 1.4; font-weight: 800; }
+.hero-cast { position: relative; z-index: 1; display: flex; justify-content: center; align-items: flex-end; gap: 18px; margin-top: 10px; }
+.cast { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.name-tag { font-size: 13px; font-weight: 700; padding: 3px 12px; border-radius: 999px; border: 2px solid var(--ink); background: #fff; }
+.name-tag.her { background: var(--pink); } .name-tag.him { background: var(--sky); }
+.cast-heart { align-self: center; margin-bottom: 26px; animation: beat 1.6s ease-in-out 2; }
+.cast-img { width: 84px; height: 84px; border-radius: 50%; object-fit: cover; border: 2.5px solid var(--ink); background: #fff; }
+
+.stats { gap: 10px; }
+.stat { border: 2.5px solid var(--ink); box-shadow: var(--sticker); border-radius: 20px; padding: 12px 14px; }
+.stat:nth-child(1) { background: var(--pink-soft); } .stat:nth-child(2) { background: var(--butter-soft); } .stat:nth-child(3) { background: var(--sky-soft); }
+.stat strong { font-size: 26px; font-weight: 800; }
+.stat span { color: var(--ink); }
+.feature-kicker { color: var(--muted); }
+.today .feature-kicker { color: var(--ink); background: var(--butter); border: 2px solid var(--ink); border-radius: 999px; padding: 2px 10px; }
+.alert { border: 2px solid currentColor; }
+
+/* 頭像 */
+.avatar { display: inline-grid; place-items: center; border-radius: 50%; overflow: hidden; flex: none; background: var(--pink-soft); border: 2px solid var(--ink); }
+.avatar-him { background: var(--sky-soft); }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
 .avatar svg { margin-top: 8%; }
 .owner-pair { display: inline-flex; }
-.owner-pair .avatar + .avatar { margin-left: -8px; }
+.owner-pair .avatar + .avatar { margin-left: -9px; }
 
+/* 舊版主頁吉祥物（空白頁仍使用） */
 .couple { display: flex; align-items: flex-end; justify-content: center; gap: 2px; }
-.couple-heart { margin-bottom: 38%; animation: beat 1.6s ease-in-out infinite; }
-.couple-img { border-radius: 50%; object-fit: cover; border: 3px solid var(--surface); box-shadow: 0 0 0 2px var(--card-2); }
-.bob { animation: bob 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
-.bob.delay { animation-delay: -1.2s; }
+.couple-heart { margin-bottom: 38%; }
+.couple-img { border-radius: 50%; object-fit: cover; border: 2.5px solid var(--ink); }
+.bob { animation: bob 2.6s ease-in-out infinite; transform-origin: 50% 100%; }
+.bob.delay { animation-delay: -1.3s; }
 @keyframes bob { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-4px) rotate(-2deg); } }
 @keyframes beat { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.25); } 30% { transform: scale(1); } }
-@media (prefers-reduced-motion: reduce) { .bob, .couple-heart { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .bob, .cast-heart, .couple-heart { animation: none; } }
 
-.home-hero.cute { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 8px; background: linear-gradient(160deg, #ffeef1 0%, #fbe7d3 100%); border-radius: 28px; padding: 18px 16px 14px 20px; margin-top: 8px; }
-.home-hero.cute h1 { font-size: 24px; line-height: 1.35; }
-.home-hero.cute .names { font-weight: 700; color: var(--fg); }
-.home-hero.cute .names b { color: var(--pink); }
-
+/* 誰的衣服 */
 .owner-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
 .owner-tabs.two { grid-template-columns: 1fr 1fr; }
-.owner-tab { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 46px; border-radius: 999px; border: 2px solid var(--card); background: var(--surface); font-size: 15px; font-weight: 600; cursor: pointer; padding: 0 8px; white-space: nowrap; overflow: hidden; }
-.owner-tab.on { border-color: var(--fg); background: var(--fg); color: #fff; }
-.owner-tab.on .avatar { box-shadow: none; }
-.garment-owner { position: absolute; left: 8px; top: 8px; display: inline-flex; }
+.owner-tab { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 48px; border-radius: 999px; border: 2px solid var(--line); background: var(--card); color: var(--ink); font-size: 15px; font-weight: 700; cursor: pointer; padding: 0 8px; white-space: nowrap; overflow: hidden; }
+.owner-tab.on { border: 2.5px solid var(--ink); box-shadow: 0 3px 0 var(--ink); }
+.owner-tab.on.who-her { background: var(--pink); } .owner-tab.on.who-him { background: var(--sky); } .owner-tab.on.who-both { background: var(--butter); }
 
+/* 衣服卡片：衣服本身就是貼紙 */
+.garment-card .garment-img, .rec-piece, .today-thumb img, .strip-item img { background: #fff; border: 2.5px solid var(--ink); }
+.garment-card .garment-img { box-shadow: var(--sticker); border-radius: 20px; }
+.garment-owner { position: absolute; left: 8px; top: 8px; display: inline-flex; }
+.fav-btn { border: 2px solid var(--ink); background: #fff; }
+.fav-btn.on { background: var(--pink); color: var(--ink); }
+.strip-item.on img { border-color: var(--pink); box-shadow: 0 0 0 2px var(--ink); }
+
+/* 設定：我們 */
 .couple-edit { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.couple-person { display: flex; flex-direction: column; align-items: center; gap: 8px; background: var(--surface); border-radius: 20px; padding: 14px 10px; }
-.couple-person input { width: 100%; text-align: center; border: 2px solid var(--card); border-radius: 12px; padding: 8px; background: var(--bg); color: var(--fg); font-weight: 600; }
-.couple-person input:focus { outline: none; border-color: var(--pink); }
-.couple-person .btn-small { font-size: 13px; min-height: 32px; }
+.couple-person { display: flex; flex-direction: column; align-items: center; gap: 8px; border-radius: 18px; padding: 14px 10px; border: 2px solid var(--ink); }
+.couple-person:first-child { background: var(--pink-soft); } .couple-person:last-child { background: var(--sky-soft); }
+.couple-person input { width: 100%; text-align: center; border: 2px solid var(--ink); border-radius: 12px; padding: 8px; background: #fff; color: var(--ink); font-weight: 700; }
+.couple-person input:focus { outline: none; box-shadow: 0 0 0 3px var(--butter); }
+.couple-person .btn-small { font-size: 13px; min-height: 34px; }
 .couple-person .link-btn { margin: 0; padding: 2px; font-size: 12px; }
-.today-pick + .today-pick { border-top: 2px dashed var(--card-2); margin-top: 12px; padding-top: 12px; }
-.today-who { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; margin-top: 10px; }
-.today-pick:first-of-type .today-who { margin-top: 12px; }
-.owned-line { margin: -4px 0 14px; font-size: 13px; }
+
+.today-pick + .today-pick { border-top: 2px dashed var(--line); margin-top: 12px; padding-top: 12px; }
+.today-who { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; margin-top: 12px; }
+.owned-line { margin: 2px 0 14px; font-size: 13px; }
 .empty-mascot { margin: 0 auto 10px; display: flex; justify-content: center; }
-.home-hero.cute h1 { font-size: 22px; }
-.home-hero.cute h1 span { white-space: nowrap; }
-.couple-person .btn-small { border: 2px solid var(--card-2); background: var(--bg); }
+.empty h2 { font-weight: 800; }
+/* 卡片裡的小縮圖不再疊一層粗框 */
+.today .today-thumb img, .rec-card .rec-piece { border: 2px solid var(--line); box-shadow: none; }
