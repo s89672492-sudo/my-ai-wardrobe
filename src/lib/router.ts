@@ -1,5 +1,5 @@
 /** 極簡 hash 路由：GitHub Pages 重新整理任何頁面都不會 404。 */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { flushSync } from 'react-dom';
 
 export type Route =
@@ -35,22 +35,35 @@ function parse(): Route {
   }
 }
 
+type VT = { finished: Promise<void>; ready: Promise<void>; updateCallbackDone: Promise<void> };
+let activeTransition: VT | null = null;
+
 export function useRoute(): Route {
-  const [r, setR] = useState<Route>(parse);
+  // 以網址字串為狀態：重複設定同一個值不會多渲染，轉場被略過時也能補回正確頁面
+  const [hash, setHash] = useState(() => location.hash);
   useEffect(() => {
     // 換頁：支援 View Transitions 的瀏覽器（iOS 18+ Safari、Chrome）用淡出淡入；
     // 捲回頂端在轉場「之內」完成，畫面不會先跳一下。系統設定「減少動態效果」時直接切換。
     const on = () => {
-      const apply = () => { setR(parse()); window.scrollTo(0, 0); };
-      const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };
+      const apply = () => { setHash(location.hash); window.scrollTo(0, 0); };
+      const doc = document as Document & { startViewTransition?: (cb: () => void) => VT };
       const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (doc.startViewTransition && !reduce) doc.startViewTransition(() => flushSync(apply));
-      else apply();
+      // 上一個轉場還沒結束（快速連點）就直接切換，不疊加轉場
+      if (!doc.startViewTransition || reduce || activeTransition || document.visibilityState !== 'visible') { apply(); return; }
+      const t = doc.startViewTransition(() => flushSync(apply));
+      activeTransition = t;
+      const ignore = () => { /* 轉場被略過只影響動畫，不是錯誤 */ };
+      t.ready.catch(ignore);
+      t.updateCallbackDone.catch(ignore);
+      void t.finished.catch(ignore).finally(() => {
+        if (activeTransition === t) activeTransition = null;
+        setHash(location.hash); // 保險：確保畫面停在目前網址的頁面
+      });
     };
     addEventListener('hashchange', on);
     return () => removeEventListener('hashchange', on);
   }, []);
-  return r;
+  return useMemo(() => parse(), [hash]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 export function navigate(to: Path, replace = false) {
