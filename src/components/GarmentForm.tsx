@@ -1,12 +1,15 @@
 import { COLORS } from '../lib/image';
 import { CATEGORIES, SEASONS, SEASON_LABEL, type CategoryId, type Season } from '../lib/types';
 import type { GarmentMeta } from '../lib/garments';
+import { OwnerAvatar } from './Mascot';
+import { useCouple } from '../lib/couple';
 
 const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'F', '26', '28', '30', '32', '34', '36', '38', '40'];
 
 export function GarmentForm({ value, onChange }: { value: GarmentMeta; onChange: (v: GarmentMeta) => void }) {
   const set = <K extends keyof GarmentMeta>(k: K, v: GarmentMeta[K]) => onChange({ ...value, [k]: v });
   const toggleSeason = (s: Season) => set('seasons', value.seasons.includes(s) ? value.seasons.filter((x) => x !== s) : [...value.seasons, s]);
+  const couple = useCouple();
   const catLabel = CATEGORIES.find((c) => c.id === value.category)?.label ?? '';
 
   return (
@@ -15,6 +18,17 @@ export function GarmentForm({ value, onChange }: { value: GarmentMeta; onChange:
         <span>名稱</span>
         <input value={value.name} maxLength={40} placeholder={`例如：${value.color || '白色'}${catLabel || 'T-shirt'}`} onChange={(e) => set('name', e.target.value)} />
       </label>
+
+      <div className="field">
+        <span>這是誰的衣服</span>
+        <div className="owner-tabs" role="radiogroup" aria-label="這是誰的衣服" style={{ marginTop: 0 }}>
+          {(['her', 'him', 'both'] as const).map((o) => (
+            <button type="button" role="radio" aria-checked={(value.owner ?? 'both') === o} key={o} className={`owner-tab ${(value.owner ?? 'both') === o ? 'on' : ''}`} onClick={() => set('owner', o)}>
+              <OwnerAvatar owner={o} size={24} /> {couple.nameOf(o)}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="field">
         <span>分類 <em>必填</em></span>

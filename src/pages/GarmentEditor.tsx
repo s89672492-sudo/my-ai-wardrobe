@@ -12,7 +12,7 @@ import { navigate } from '../lib/router';
 import { CATEGORIES, type Garment } from '../lib/types';
 
 type Step = 'pick' | 'crop' | 'cutout' | 'details';
-const EMPTY: GarmentMeta = { name: '', category: 'tshirt', color: '', brand: '', size: '', seasons: [], notes: '', favorite: 0, styles: [] };
+const EMPTY: GarmentMeta = { name: '', category: 'tshirt', color: '', brand: '', size: '', seasons: [], notes: '', favorite: 0, styles: [], owner: 'both' };
 
 export function GarmentEditor({ id }: { id?: string }) {
   const [step, setStep] = useState<Step>(id ? 'details' : 'pick');
@@ -33,7 +33,7 @@ export function GarmentEditor({ id }: { id?: string }) {
     void getGarment(id).then(async (g) => {
       if (!g) { setError('找不到這件衣服，可能已被刪除'); return; }
       setExisting(g);
-      setMeta({ name: g.name, category: g.category, color: g.color, brand: g.brand, size: g.size, seasons: g.seasons, notes: g.notes, favorite: g.favorite, styles: g.styles ?? [] });
+      setMeta({ name: g.name, category: g.category, color: g.color, brand: g.brand, size: g.size, seasons: g.seasons, notes: g.notes, favorite: g.favorite, styles: g.styles ?? [], owner: g.owner ?? 'both' });
       metaTouched.current = true;
       const b = await getImageBlob(g.thumbImageId);
       if (b) setPreview(URL.createObjectURL(b));

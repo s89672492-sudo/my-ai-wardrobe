@@ -23,7 +23,7 @@ export function TryOn() {
 
       <h3 className="section-title">選擇全身照開始試穿</h3>
       {persons && persons.length === 0 && (
-        <EmptyState icon="user" title="先新增一張全身照" action={<a className="btn btn-primary" href={href('/tryon/person/new')}><Icon name="camera" size={18} /> 新增全身照</a>}>
+        <EmptyState icon="user" mascot="her" title="先新增一張全身照" action={<a className="btn btn-primary" href={href('/tryon/person/new')}><Icon name="camera" size={18} /> 新增全身照</a>}>
           AI 會在手機上找出肩膀、手肘、腰、臀、膝蓋的位置與身體輪廓，之後就能把衣櫥的衣服穿上去。
         </EmptyState>
       )}

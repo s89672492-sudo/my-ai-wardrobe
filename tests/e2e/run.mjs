@@ -110,6 +110,7 @@ try {
   await page.click('button:has-text("完成去背")');
   await page.waitForSelector('.form');
   await page.click('.chip-grid .chip >> text=T-shirt');
+  await page.click('.owner-tab:has-text("小白")');
   await page.click('.sticky-actions >> text=儲存');
   await page.waitForSelector('.specs');
   await page.click('button:has-text("試穿這件")');
@@ -188,6 +189,28 @@ try {
   await page.goto(BASE + '#/');
   await page.reload();
   ok(await page.locator('.today').count() === 1, 'home shows today pick');
+
+  // 情侶衣櫥：暱稱、自訂頭像（只存本機）、依擁有者篩選
+  await page.goto(BASE + '#/settings');
+  await page.fill('input[aria-label="她的暱稱"]', '一二');
+  await page.fill('input[aria-label="他的暱稱"]', '布布');
+  await page.locator('.couple-person').first().locator('input[type=file]').setInputFiles(path.join(PHOTOS, 'photo-02.jpg'));
+  await page.waitForSelector('.crop-stage');
+  await page.click('button:has-text("使用這個頭像")');
+  await page.waitForSelector('.couple-person .avatar img', { timeout: 15000 });
+  ok(await page.locator('.couple-person').first().locator('.avatar img').count() === 1, 'couple: custom avatar saved locally');
+  await page.goto(BASE + '#/');
+  await page.reload();
+  ok(/一二\s*♥\s*布布/.test(await page.locator('.home-hero').innerText()), 'couple: names shown on home');
+  await page.goto(BASE + '#/wardrobe');
+  await page.click('.owner-tab:has-text("一二")');
+  const herItems = await page.locator('.garment-card').count();
+  await page.click('.owner-tab:has-text("布布")');
+  const hisItems = await page.locator('.garment-card').count();
+  await page.click('.owner-tab:has-text("全部")');
+  const allItems = await page.locator('.garment-card').count();
+  ok(herItems === allItems && hisItems === allItems - 1, `couple: owner filter (all ${allItems}, her ${herItems}, his ${hisItems})`);
+  await page.screenshot({ path: path.join(OUT, `${tag}-couple-wardrobe.png`) });
 
   // 8. 資料與隱私：CSP、用量、重複檢查、匯出
   ok(await page.evaluate(() => !!document.querySelector('meta[http-equiv="Content-Security-Policy"]')), 'CSP meta present in production build');

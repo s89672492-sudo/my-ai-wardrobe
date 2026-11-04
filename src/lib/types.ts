@@ -38,9 +38,14 @@ export interface Garment {
   favorite: 0 | 1;
   /** 選填風格標籤（推薦用）：休閒／正式／運動 */
   styles?: ('casual' | 'formal' | 'sport')[];
+  /** 誰的衣服（情侶衣櫥）；未設定視為共用 */
+  owner?: Owner;
 }
 
-export type ImageKind = 'garment-original' | 'garment-cutout' | 'person' | 'person-mask' | 'tryon' | 'thumbnail';
+/** 她（白熊）／他（棕熊）／共用 */
+export type Owner = 'her' | 'him' | 'both';
+
+export type ImageKind = 'garment-original' | 'garment-cutout' | 'person' | 'person-mask' | 'tryon' | 'thumbnail' | 'avatar';
 export interface StoredImage {
   id: string;
   kind: ImageKind;
@@ -94,5 +99,9 @@ export interface AppSettings {
   imageQuality: 'standard' | 'compact';
   /** 上次匯出備份時間 */
   lastBackupAt?: number;
+  /** 兩人的暱稱與自訂頭像（頭像圖片只存在這支手機） */
+  couple?: CoupleSettings;
 }
+export interface CoupleSettings { herName: string; himName: string; herAvatarId?: string; himAvatarId?: string }
+export const DEFAULT_COUPLE: CoupleSettings = { herName: '小白', himName: '小棕' };
 export const DEFAULT_SETTINGS: AppSettings = { computeMode: 'auto', backend: 'auto', imageQuality: 'standard' };

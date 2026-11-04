@@ -7,7 +7,7 @@ type Drag = { mode: 'move' | 'nw' | 'ne' | 'sw' | 'se'; sx: number; sy: number; 
 const MIN = 40;
 
 /** 裁切：拖曳框內移動、拖曳四角調整大小，可旋轉 90°。座標以原圖像素計算。 */
-export function CropView({ source, onDone, onBack }: { source: HTMLCanvasElement; onDone: (c: HTMLCanvasElement) => void; onBack: () => void }) {
+export function CropView({ source, onDone, onBack, doneLabel = '下一步：去背' }: { source: HTMLCanvasElement; onDone: (c: HTMLCanvasElement) => void; onBack: () => void; doneLabel?: string }) {
   const [img, setImg] = useState(source);
   const [rect, setRect] = useState<Rect>({ x: 0, y: 0, w: source.width, h: source.height });
   const [scale, setScale] = useState(1);
@@ -91,7 +91,7 @@ export function CropView({ source, onDone, onBack }: { source: HTMLCanvasElement
       </div>
       <div className="editor-actions">
         <button className="btn" onClick={onBack}>重選照片</button>
-        <button className="btn btn-primary" onClick={done}>下一步：去背</button>
+        <button className="btn btn-primary" onClick={done}>{doneLabel}</button>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Badge, ListLink, PageHeader } from '../components/ui';
 import { Icon } from '../components/Icon';
+import { CoupleEditor } from '../components/CoupleEditor';
 import { AIClient } from '../ai/client';
 import { CUTOUT_MODEL_URL, MODEL_URLS, WASM_PATH, modelsCached } from '../ai/assets';
 import { formatMB, getStorageInfo, useOnline, type StorageInfo } from '../lib/platform';
@@ -51,6 +52,9 @@ export function Settings() {
       <PageHeader title="個人設定" />
       {error && <div className="alert alert-err">{error}</div>}
       {msg && <div className={`alert alert-${msg.tone}`} role="status" onClick={() => setMsg(null)}>{msg.text}</div>}
+
+      <h3 className="section-title">我們</h3>
+      <CoupleEditor />
 
       <h3 className="section-title">運算模式</h3>
       <div className="card options" role="radiogroup" aria-label="運算模式">

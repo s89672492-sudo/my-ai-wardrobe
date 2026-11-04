@@ -3,7 +3,7 @@ import { getDB } from './db';
 import { uid } from './image';
 import type { Garment, ImageKind, StoredImage } from './types';
 
-export type GarmentMeta = Pick<Garment, 'name' | 'category' | 'color' | 'brand' | 'size' | 'seasons' | 'notes' | 'favorite' | 'styles'>;
+export type GarmentMeta = Pick<Garment, 'name' | 'category' | 'color' | 'brand' | 'size' | 'seasons' | 'notes' | 'favorite' | 'styles' | 'owner'>;
 export interface GarmentImages {
   original: { blob: Blob; width: number; height: number; hash: string };
   cutout: { blob: Blob; width: number; height: number } | null;

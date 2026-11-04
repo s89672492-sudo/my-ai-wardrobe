@@ -8,6 +8,8 @@ import { listGarments } from '../lib/garments';
 import { currentSeason, recommend, type Recommendation } from '../recommend/engine';
 import { useImageUrl } from '../lib/useImageUrl';
 import type { Garment } from '../lib/types';
+import { Avatar, CoupleBears } from '../components/Mascot';
+import { belongsTo, useCouple } from '../lib/couple';
 
 function greeting() {
   const h = new Date().getHours();
@@ -19,26 +21,40 @@ export function Home() {
   const [err, setErr] = useState<string | null>(null);
   const install = useInstallPrompt();
   const standalone = isStandalone();
-  const [pick, setPick] = useState<Recommendation | null>(null);
+  // 今日推薦：有標記擁有者時，兩人各一組
+  const [picks, setPicks] = useState<{ who: 'her' | 'him' | null; r: Recommendation }[]>([]);
   const { settings } = useSettings();
+  const couple = useCouple();
+  const [owned, setOwned] = useState<{ her: number; him: number } | null>(null);
   const backupDays = settings.lastBackupAt ? Math.floor((Date.now() - settings.lastBackupAt) / 86400000) : null;
   const needBackup = !!counts && counts.garments + counts.persons > 0 && (backupDays === null || backupDays > 14);
   useEffect(() => {
     countAll().then(setCounts, (e: Error) => setErr(e.message));
     // 今日推薦：以日期當亂數種子，同一天看到同一組
     void listGarments().then((gs) => {
+      setOwned({ her: gs.filter((g) => g.owner === 'her').length, him: gs.filter((g) => g.owner === 'him').length });
       const d = new Date();
-      const r = recommend({ garments: gs, mode: 'random', season: currentSeason(d), occasion: 'daily', style: 'any', seed: d.getFullYear() * 1000 + d.getMonth() * 40 + d.getDate(), count: 1 });
-      setPick(r.items[0] ?? null);
+      const seed = d.getFullYear() * 1000 + d.getMonth() * 40 + d.getDate();
+      const one = (list: Garment[], s: number) => recommend({ garments: list, mode: 'random', season: currentSeason(d), occasion: 'daily', style: 'any', seed: s, count: 1 }).items[0];
+      const anyOwner = gs.some((g) => g.owner === 'her' || g.owner === 'him');
+      const out: { who: 'her' | 'him' | null; r: Recommendation }[] = [];
+      if (anyOwner) {
+        for (const [who, s] of [['her', seed], ['him', seed + 7]] as const) { const r = one(gs.filter((g) => belongsTo(g.owner, who)), s); if (r) out.push({ who, r }); }
+      } else { const r = one(gs, seed); if (r) out.push({ who: null, r }); }
+      setPicks(out);
     });
   }, []);
   const today = new Date().toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'long' });
 
   return (
     <div className="page">
-      <header className="home-hero">
-        <p className="eyebrow">{today}</p>
-        <h1>{greeting()}，<br />今天想穿什麼？</h1>
+      <header className="home-hero cute">
+        <div>
+          <p className="eyebrow">{today}</p>
+          <p className="names">{couple.herName} <b>♥</b> {couple.himName}</p>
+          <h1>{greeting()}，<br /><span>今天想穿什麼？</span></h1>
+        </div>
+        <CoupleBears size={68} />
       </header>
 
       {err && <div className="alert alert-err">{err}</div>}
@@ -53,14 +69,22 @@ export function Home() {
         <a href={href('/outfits')} className="stat"><strong>{counts?.outfits ?? '–'}</strong><span>組穿搭</span></a>
         <a href={href('/outfits')} className="stat"><strong>{counts?.tryons ?? '–'}</strong><span>次試穿</span></a>
       </section>
+      {owned && owned.her + owned.him > 0 && (
+        <p className="muted center owned-line">{couple.herName}的衣服 {owned.her} 件 · {couple.himName}的衣服 {owned.him} 件</p>
+      )}
 
-      {pick && (
+      {picks.length > 0 && (
         <a href="#/outfits?tab=recommend" className="card today">
           <span className="feature-kicker"><Icon name="sparkle" size={16} /> 今日推薦</span>
-          <div className="today-row">
-            {[pick.outer, pick.top, pick.dress, pick.bottom].filter(Boolean).slice(0, 3).map((g) => <Thumb key={g!.id} g={g!} />)}
-          </div>
-          <p>{pick.reasons[0]}</p>
+          {picks.map(({ who, r }) => (
+            <div key={who ?? 'all'} className="today-pick">
+              {who && <span className="today-who"><Avatar who={who} size={24} /> {couple.nameOf(who)}</span>}
+              <div className="today-row">
+                {[r.outer, r.top, r.dress, r.bottom].filter(Boolean).slice(0, 3).map((g) => <Thumb key={g!.id} g={g!} />)}
+              </div>
+              <p>{r.reasons[0]}</p>
+            </div>
+          ))}
         </a>
       )}
 

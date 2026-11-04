@@ -41,14 +41,14 @@ export function Outfits() {
       </div>
       {tab === 'recommend' && <div style={{ marginTop: 12 }}><RecommendPanel /></div>}
       {err && <div className="alert alert-err">{err}</div>}
-      {tab === 'saved' && outfits?.length === 0 && <EmptyState icon="heart" title="還沒有收藏的穿搭" action={<a className="btn btn-primary" href={href('/tryon')}>去搭配</a>}>在 AI 試穿頁組合上衣、下身、外套後按「收藏穿搭」。</EmptyState>}
+      {tab === 'saved' && outfits?.length === 0 && <EmptyState icon="heart" mascot="her" title="還沒有收藏的穿搭" action={<a className="btn btn-primary" href={href('/tryon')}>去搭配</a>}>在 AI 試穿頁組合上衣、下身、外套後按「收藏穿搭」。</EmptyState>}
       {tab === 'saved' && (
         <div className="grid" style={{ marginTop: 14 }}>
           {outfits?.map((o) => <OutfitCard key={o.id} o={o} garments={garments} onDelete={async () => { if (confirm(`刪除穿搭「${o.name}」？（衣服本身不會被刪除）`)) { await deleteOutfit(o.id); void load(); } }} />)}
         </div>
       )}
       {tab === 'history' && tryons?.length === 0 && (
-        <EmptyState icon="sparkle" title="還沒有試穿紀錄" action={<a className="btn btn-primary" href={href('/tryon')}>去試穿</a>}>在 AI 試穿頁按「儲存試穿」後會出現在這裡。</EmptyState>
+        <EmptyState icon="sparkle" mascot="him" title="還沒有試穿紀錄" action={<a className="btn btn-primary" href={href('/tryon')}>去試穿</a>}>在 AI 試穿頁按「儲存試穿」後會出現在這裡。</EmptyState>
       )}
       {tab === 'history' && (
         <div className="grid" style={{ marginTop: 14 }}>
