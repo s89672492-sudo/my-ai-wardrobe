@@ -54,9 +54,10 @@ try {
       const db = await new Promise((r) => { const q = indexedDB.open('my-ai-wardrobe'); q.onsuccess = () => r(q.result); });
       const p = await new Promise((r) => { const t = db.transaction('persons').objectStore('persons').get(id); t.onsuccess = () => r(t.result); });
       const a = p.analysis;
-      return { w: a.imageW, h: a.imageH, maskRect: a.maskRect, kp: a.keypoints.map((k) => [Math.round(k.x), Math.round(k.y), +k.score.toFixed(2)]) };
+      return { parse: !!p.parseImageId, w: a.imageW, h: a.imageH, maskRect: a.maskRect, kp: a.keypoints.map((k) => [Math.round(k.x), Math.round(k.y), +k.score.toFixed(2)]) };
     });
     console.log(`KP ${file} ${JSON.stringify(dump)}`);
+    ok(dump.parse, `${file}: hair/skin/clothes parse map saved`);
   }
 
   // 2. 校正關鍵點（拖曳左肩）→ 儲存 → 重新整理仍保留

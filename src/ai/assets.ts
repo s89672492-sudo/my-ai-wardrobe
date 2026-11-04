@@ -4,6 +4,8 @@ export const WASM_PATH = `${BASE}litert-wasm/`;
 export const MODEL_URLS = {
   pose: `${BASE}models/movenet_singlepose_lightning.tflite`,
   segmenter: `${BASE}models/selfie_segmenter.tflite`,
+  /** 人體部位分割（頭髮／皮膚／衣服） */
+  parser: `${BASE}models/selfie_multiclass_256x256.tflite`,
 };
 /** 去背模型：只有在新增衣服時才下載（延遲載入） */
 export const CUTOUT_MODEL_URL = `${BASE}models/magic_touch.tflite`;

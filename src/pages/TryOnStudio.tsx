@@ -58,6 +58,7 @@ export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { per
   const [person, setPerson] = useState<PersonPhoto | null>(null);
   const [photo, setPhoto] = useState<HTMLCanvasElement | null>(null);
   const [mask, setMask] = useState<HTMLCanvasElement | null>(null);
+  const [parse, setParse] = useState<HTMLCanvasElement | null>(null);
   const [garments, setGarments] = useState<Garment[] | null>(null);
   const [picked, setPicked] = useState<Picked>({});
   const [adjusts, setAdjusts] = useState<Partial<Record<Slot, Adjust>>>({});
@@ -79,8 +80,9 @@ export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { per
   const drag = useRef<{ x: number; y: number; dx: number; dy: number; kind: 'move' | 'split'; slot?: Slot } | null>(null);
   const [dragging, setDragging] = useState(false);
 
-  const { settings } = useSettings();
+  const { settings, update } = useSettings();
   const perf = useMemo(() => perfFor(settings), [settings]);
+  const shadingPct = settings.tryOnShading ?? 60;
   const lastDraft = useRef(0);
   useEffect(() => () => releaseComposeMemory(), []);
   const flash = (t: string) => { setToast(t); setTimeout(() => setToast((x) => (x === t ? null : x)), 2600); };
@@ -97,6 +99,7 @@ export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { per
         if (!pb) throw new Error('全身照檔案遺失');
         setPhoto(await blobCanvas(pb));
         if (p.maskImageId) { const mb = await getImageBlob(p.maskImageId); if (mb) setMask(await blobCanvas(mb)); }
+        if (p.parseImageId) { const qb = await getImageBlob(p.parseImageId); if (qb) setParse(await blobCanvas(qb)); }
         setGarments(await listGarments());
       } catch (e) { setError((e as Error).message); }
     })();
@@ -159,13 +162,13 @@ export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { per
   const compose = useCallback((draft: boolean, anchorsOn = showAnchors) => {
     if (!photo || !person?.analysis || !layers.length) { setResult(null); return null; }
     try {
-      const r = composeTryOn({ photo, mask, analysis: person.analysis, layers, draft, showAnchors: anchorsOn, grid: perf.grid, draftGrid: perf.draftGrid });
+      const r = composeTryOn({ photo, mask, parse, shading: shadingPct / 100, analysis: person.analysis, layers, draft, showAnchors: anchorsOn, grid: perf.grid, draftGrid: perf.draftGrid });
       setResult(r);
       setError(null);
       recordMetric(draft ? 'composeDraft' : 'compose', r.ms, `${layers.length} 件 ${photo.width}×${photo.height}`);
       return r;
     } catch (e) { setError(`合成失敗：${(e as Error).message}`); return null; }
-  }, [photo, mask, person, layers, showAnchors, perf]);
+  }, [photo, mask, parse, shadingPct, person, layers, showAnchors, perf]);
 
   useEffect(() => {
     if (dragging) {
@@ -324,6 +327,18 @@ export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { per
             </div>
           )}
 
+          <div className="card">
+            <label className="slider shading">
+              <span>光影</span>
+              <input type="range" min={0} max={100} step={5} value={shadingPct} aria-label="光影融合強度" onChange={(e) => void update({ tryOnShading: +e.target.value })} />
+              <b>{shadingPct}%</b>
+            </label>
+            <p className="muted small-note">把照片中原本的明暗、皺褶與環境色調套到衣服上，看起來比較不像貼上去的。</p>
+            {person && !person.parseImageId && (
+              <p className="muted small-note">這張全身照是舊版辨識。<a href={`#/tryon/person/${person.id}`}>重新辨識</a>後，頭髮會自然垂在衣服前、手臂邊緣也更準。</p>
+            )}
+          </div>
+
           <h3 className="section-title">穿搭圖層（由外到內）</h3>
           <ul className="layers card">
             {slots.map((s) => <LayerRow key={s} slot={s} l={picked[s]!} hidden={hidden.has(s)} onToggle={() => setHidden((h) => { const n = new Set(h); if (n.has(s)) n.delete(s); else n.add(s); return n; })} onRemove={() => remove(s)} />)}
@@ -374,7 +389,7 @@ export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { per
           <p className="muted center">本機合成 {Math.round(result.ms)} ms · {layers.length} 件</p>
         </>
       )}
-      <p className="disclaimer">說明：試穿圖是把衣服照片依身體關鍵點變形後合成的 2D 預覽（電腦視覺 + 圖像合成），不是生成式 AI；不會重建布料皺褶、光影與實際合身度，僅供搭配參考。</p>
+      <p className="disclaimer">說明：試穿圖是把衣服照片依身體關鍵點變形後合成的 2D 預覽（電腦視覺 + 圖像合成），不是生成式 AI。「光影」會借用照片中原本的明暗與皺褶，但不會重建新衣服本身的布料皺褶、被遮住的部分與實際合身度，僅供搭配參考。</p>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-/** 人體辨識（MoveNet + Selfie Segmenter）：用到時才載入，離開頁面即釋放。 */
+/** 人體辨識（MoveNet + Selfie Segmenter + Multiclass 部位分割）：用到時才載入，離開頁面即釋放。 */
 import { AIClient } from './client';
 import { MODEL_URLS, WASM_PATH } from './assets';
 import type { Accelerator, Keypoint } from './protocol';
@@ -19,7 +19,7 @@ export function ensureBodyModels(accelerator: Accelerator, onProgress?: (s: stri
   return ready;
 }
 
-export interface AnalyzeOutput { keypoints: Keypoint[]; mask: ImageBitmap; maskRect: { x: number; y: number; w: number; h: number }; ms: number; refined: boolean }
+export interface AnalyzeOutput { keypoints: Keypoint[]; mask: ImageBitmap; parse?: ImageBitmap; maskRect: { x: number; y: number; w: number; h: number }; ms: number; refined: boolean }
 
 export async function analyzePhoto(bitmap: ImageBitmap, onProgress?: (s: string) => void): Promise<AnalyzeOutput> {
   if (!client) throw new Error('AI 人體辨識尚未啟動');
@@ -29,7 +29,7 @@ export async function analyzePhoto(bitmap: ImageBitmap, onProgress?: (s: string)
     const r = await req.promise;
     if (r.type === 'cancelled') throw new Error('已取消');
     if (r.type !== 'analyzeResult') throw new Error('AI 人體辨識沒有回傳結果');
-    return { keypoints: r.keypoints, mask: r.mask, maskRect: r.maskRect, ms: r.timings.totalMs, refined: r.refined };
+    return { keypoints: r.keypoints, mask: r.mask, parse: r.parse, maskRect: r.maskRect, ms: r.timings.totalMs, refined: r.refined };
   } finally { currentId = null; }
 }
 

@@ -1,6 +1,6 @@
 /** 主執行緒 ↔ AI Worker 的訊息協定。 */
 export type Accelerator = 'webgpu' | 'wasm';
-export type ModelName = 'segmenter' | 'pose' | 'magicTouch';
+export type ModelName = 'segmenter' | 'pose' | 'magicTouch' | 'parser';
 
 export interface Keypoint { name: string; x: number; y: number; score: number }
 
@@ -23,7 +23,9 @@ export type WorkerResponse =
       type: 'result'; id: number;
       keypoints?: Keypoint[];
       mask?: { bitmap: ImageBitmap; width: number; height: number };
-      timings: { poseMs?: number; segmentMs?: number; totalMs: number };
+      /** 人體部位分割：R=頭髮、G=皮膚（臉＋身體）、B=衣服，0~255 機率 */
+      parse?: { bitmap: ImageBitmap; width: number; height: number };
+      timings: { poseMs?: number; segmentMs?: number; parseMs?: number; totalMs: number };
     }
   | { type: 'cutoutResult'; id: number; mask: ImageBitmap; ms: number }
   | {
@@ -32,7 +34,9 @@ export type WorkerResponse =
       /** 人體遮罩（白色 + alpha），對應原圖中的 maskRect 區域 */
       mask: ImageBitmap;
       maskRect: { x: number; y: number; w: number; h: number };
-      timings: { pass1Ms: number; pass2Ms: number; segmentMs: number; totalMs: number };
+      /** 人體部位分割（同 maskRect 範圍）；未載入部位模型時為 undefined */
+      parse?: ImageBitmap;
+      timings: { pass1Ms: number; pass2Ms: number; segmentMs: number; parseMs?: number; totalMs: number };
       refined: boolean;
     }
   | { type: 'cancelled'; id: number }

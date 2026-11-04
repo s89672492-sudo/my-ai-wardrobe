@@ -27,6 +27,7 @@ export function PersonPage({ id }: { id?: string }) {
   const [person, setPerson] = useState<PersonPhoto | null>(null);
   const [photo, setPhoto] = useState<HTMLCanvasElement | null>(null);
   const [mask, setMask] = useState<HTMLCanvasElement | null>(null);
+  const [parse, setParse] = useState<HTMLCanvasElement | null>(null);
   const [analysis, setAnalysis] = useState<BodyAnalysis | null>(null);
   const [layers, setLayers] = useState<Layers>({ mask: true, arms: true, skeleton: true, measures: false });
   const [editing, setEditing] = useState(false);
@@ -52,6 +53,7 @@ export function PersonPage({ id }: { id?: string }) {
         if (!pb) throw new Error('照片檔案遺失');
         setPhoto(await blobToCanvas(pb));
         if (p.maskImageId) { const mb = await getImageBlob(p.maskImageId); if (mb) setMask(await blobToCanvas(mb)); }
+        if (p.parseImageId) { const qb = await getImageBlob(p.parseImageId); if (qb) setParse(await blobToCanvas(qb)); }
         setAnalysis(p.analysis);
       } catch (e) { setError((e as Error).message); }
     })();
@@ -69,6 +71,7 @@ export function PersonPage({ id }: { id?: string }) {
       ctx2d(m).drawImage(out.mask, 0, 0);
       out.mask.close();
       setMask(m);
+      if (out.parse) { const q = makeCanvas(out.parse.width, out.parse.height); ctx2d(q).drawImage(out.parse, 0, 0); out.parse.close(); setParse(q); } else setParse(null);
       setAnalysis(analyzeBody(out.keypoints, c.width, c.height, maskDataOf(m, out.maskRect)));
       setMs(out.ms);
       recordMetric('analyze', out.ms, `${be === 'webgpu' ? 'WebGPU' : 'CPU'} ${c.width}×${c.height}`);
@@ -143,6 +146,7 @@ export function PersonPage({ id }: { id?: string }) {
         photo: dirty.photo ? { blob: await canvasToBlob(photo, 'image/jpeg', imageProfile().jpegQ), width: photo.width, height: photo.height, hash: hash.current } : undefined,
         thumb: dirty.photo ? { blob: tb, width: 480, height: 640 } : undefined,
         mask: dirty.mask ? (mask ? { blob: await canvasToBlob(mask, 'image/png'), width: mask.width, height: mask.height } : null) : undefined,
+        parse: dirty.mask ? (parse ? { blob: await canvasToBlob(parse, 'image/png'), width: parse.width, height: parse.height } : null) : undefined,
       });
       setPerson(p);
       setDirty({ photo: false, mask: false, analysis: false });

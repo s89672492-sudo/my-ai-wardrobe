@@ -16,7 +16,7 @@ const models: Partial<Record<ModelName, LoadedModel>> = {};
 let backend: Accelerator = 'wasm';
 let runtimeLoaded = false;
 const cancelled = new Set<number>();
-const MODEL_LABEL: Record<ModelName, string> = { pose: '人體姿勢 MoveNet', segmenter: '人體分割 Selfie Segmenter', magicTouch: 'AI 去背 MagicTouch' };
+const MODEL_LABEL: Record<ModelName, string> = { pose: '人體姿勢 MoveNet', segmenter: '人體分割 Selfie Segmenter', magicTouch: 'AI 去背 MagicTouch', parser: '人體部位分割 Multiclass' };
 
 let cacheName = 'ai-assets';
 /** 已預先從 Cache Storage 取出的 glue 腳本（importScripts 是同步的，無法等待 Cache API） */
@@ -168,7 +168,7 @@ async function processFrame(msg: Extract<WorkerRequest, { type: 'process' }>) {
   const { bitmap, id } = msg;
   const t0 = performance.now();
   try {
-    const timings: { poseMs?: number; segmentMs?: number; totalMs: number } = { totalMs: 0 };
+    const timings: { poseMs?: number; segmentMs?: number; parseMs?: number; totalMs: number } = { totalMs: 0 };
     let keypoints: Keypoint[] | undefined;
     let mask: { bitmap: ImageBitmap; width: number; height: number } | undefined;
     if (msg.tasks.includes('pose')) {
@@ -185,9 +185,17 @@ async function processFrame(msg: Extract<WorkerRequest, { type: 'process' }>) {
       mask = await runSegmenter(bitmap);
       timings.segmentMs = performance.now() - s0;
     }
-    if (cancelled.has(id)) { mask?.bitmap.close(); return post({ type: 'cancelled', id }); }
+    let parse: { bitmap: ImageBitmap; width: number; height: number } | undefined;
+    if (msg.tasks.includes('parser')) {
+      if (cancelled.has(id)) { mask?.bitmap.close(); return post({ type: 'cancelled', id }); }
+      post({ type: 'progress', id, stage: '辨識頭髮、皮膚與衣服' });
+      const q0 = performance.now();
+      parse = await runParser(bitmap);
+      timings.parseMs = performance.now() - q0;
+    }
+    if (cancelled.has(id)) { mask?.bitmap.close(); parse?.bitmap.close(); return post({ type: 'cancelled', id }); }
     timings.totalMs = performance.now() - t0;
-    post({ type: 'result', id, keypoints, mask, timings }, mask ? [mask.bitmap] : []);
+    post({ type: 'result', id, keypoints, mask, parse, timings }, [mask?.bitmap, parse?.bitmap].filter(Boolean) as ImageBitmap[]);
   } catch (err) {
     post({ type: 'error', id, stage: 'process', message: errMsg(err) });
   } finally {
@@ -296,10 +304,18 @@ async function analyze(msg: Extract<WorkerRequest, { type: 'analyze' }>) {
     const s0 = performance.now();
     const seg = await segmentTiled(crop);
     const segmentMs = performance.now() - s0;
+    // 人體部位（頭髮／皮膚／衣服）：讓頭髮能蓋在衣服前、手臂遮擋用真實皮膚範圍、光影取自原本的衣服
+    let parse: ImageBitmap | undefined, parseMs: number | undefined;
+    if (models.parser && !cancelled.has(id)) {
+      post({ type: 'progress', id, stage: '辨識頭髮、皮膚與衣服' });
+      const q0 = performance.now();
+      parse = (await runParser(crop)).bitmap;
+      parseMs = performance.now() - q0;
+    }
     if (crop !== bitmap) crop.close();
-    if (cancelled.has(id)) { seg.bitmap.close(); return post({ type: 'cancelled', id }); }
-    post({ type: 'analyzeResult', id, keypoints, mask: seg.bitmap, maskRect: region, refined,
-      timings: { pass1Ms, pass2Ms, segmentMs, totalMs: performance.now() - t0 } }, [seg.bitmap]);
+    if (cancelled.has(id)) { seg.bitmap.close(); parse?.close(); return post({ type: 'cancelled', id }); }
+    post({ type: 'analyzeResult', id, keypoints, mask: seg.bitmap, maskRect: region, refined, parse,
+      timings: { pass1Ms, pass2Ms, segmentMs, parseMs, totalMs: performance.now() - t0 } }, [seg.bitmap, ...(parse ? [parse] : [])]);
   } catch (err) {
     post({ type: 'error', id, stage: 'analyze', message: errMsg(err) });
   } finally {
@@ -415,6 +431,55 @@ async function segmentTiled(src: ImageBitmap): Promise<{ bitmap: ImageBitmap; wi
   const c = new OffscreenCanvas(outW, outH);
   c.getContext('2d')!.putImageData(new ImageData(px, outW, outH), 0, 0);
   return { bitmap: await createImageBitmap(c), width: outW, height: outH };
+}
+
+/**
+ * MediaPipe Selfie Multiclass（256×256）：6 類 = 背景、頭髮、身體皮膚、臉部皮膚、衣服、其他（配件）。
+ * 輸出不透明 RGB 圖（避免 alpha 預乘造成數值失真）：R=頭髮、G=皮膚（臉＋身體）、B=衣服。
+ */
+const PARSE_CLASSES = ['background', 'hair', 'body-skin', 'face-skin', 'clothes', 'others'] as const;
+async function runParser(src: ImageBitmap): Promise<{ bitmap: ImageBitmap; width: number; height: number }> {
+  const m = models.parser;
+  if (!m) throw new Error('人體部位模型尚未載入');
+  const { lb, rgba } = readPixels(src, m.w, m.h);
+  const n = m.w * m.h;
+  const f = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { f[i * 3] = rgba[i * 4]! / 255; f[i * 3 + 1] = rgba[i * 4 + 1]! / 255; f[i * 3 + 2] = rgba[i * 4 + 2]! / 255; }
+  const input = new Tensor(f, [1, m.h, m.w, 3]);
+  let outs: Tensor[];
+  try { outs = await m.model.run([input]); } finally { input.delete(); }
+  try {
+    const out = outs[0]!;
+    const ch = Array.from(out.shape).at(-1)!;
+    if (ch < 5) throw new Error(`人體部位模型輸出格式不符 [${Array.from(out.shape)}]`);
+    const raw = (await out.data()) as Float32Array;
+    // 判斷輸出是機率（總和≈1）還是 logits，必要時做 softmax
+    let isProb = true;
+    for (let i = 0; i < 64 && isProb; i++) {
+      let sum = 0;
+      for (let k = 0; k < ch; k++) { const v = raw[i * ch + k]!; if (v < -0.001 || v > 1.001) isProb = false; sum += v; }
+      if (Math.abs(sum - 1) > 0.05) isProb = false;
+    }
+    void PARSE_CLASSES;
+    const px = new Uint8ClampedArray(n * 4);
+    const p = new Float32Array(ch);
+    for (let i = 0; i < n; i++) {
+      if (isProb) for (let k = 0; k < ch; k++) p[k] = raw[i * ch + k]!;
+      else {
+        let mx = -Infinity; for (let k = 0; k < ch; k++) mx = Math.max(mx, raw[i * ch + k]!);
+        let s = 0; for (let k = 0; k < ch; k++) { p[k] = Math.exp(raw[i * ch + k]! - mx); s += p[k]!; }
+        for (let k = 0; k < ch; k++) p[k]! /= s;
+      }
+      px[i * 4] = Math.round(p[1]! * 255);
+      px[i * 4 + 1] = Math.round(Math.min(1, p[2]! + p[3]!) * 255);
+      px[i * 4 + 2] = Math.round(p[4]! * 255);
+      px[i * 4 + 3] = 255;
+    }
+    const c = new OffscreenCanvas(m.w, m.h);
+    c.getContext('2d')!.putImageData(new ImageData(px, m.w, m.h), 0, 0);
+    const bitmap = await createImageBitmap(c, lb.dx, lb.dy, lb.scaledW, lb.scaledH);
+    return { bitmap, width: lb.scaledW, height: lb.scaledH };
+  } finally { outs.forEach((t) => t.delete()); }
 }
 
 async function runSegmenter(src: ImageBitmap) {

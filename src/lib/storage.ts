@@ -6,7 +6,7 @@ import { getDB } from './db';
 import type { ImageKind, StoredImage } from './types';
 
 export const KIND_ZH: Record<ImageKind, string> = {
-  'garment-original': '衣服原圖', 'garment-cutout': '衣服去背圖', person: '全身照', 'person-mask': '人體輪廓', tryon: '試穿圖', thumbnail: '縮圖', avatar: '自訂頭像',
+  'garment-original': '衣服原圖', 'garment-cutout': '衣服去背圖', person: '全身照', 'person-mask': '人體輪廓', 'person-parse': '人體部位圖', tryon: '試穿圖', thumbnail: '縮圖', avatar: '自訂頭像',
 };
 
 export interface StorageReport {
@@ -35,7 +35,7 @@ async function referencedImageIds(): Promise<Set<string>> {
   const db = await getDB();
   const ids = new Set<string>();
   for (const g of await db.getAll('garments')) [g.originalImageId, g.cutoutImageId, g.thumbImageId].forEach((i) => i && ids.add(i));
-  for (const p of await db.getAll('persons')) [p.imageId, p.thumbImageId, p.maskImageId].forEach((i) => i && ids.add(i));
+  for (const p of await db.getAll('persons')) [p.imageId, p.thumbImageId, p.maskImageId, p.parseImageId].forEach((i) => i && ids.add(i));
   for (const t of await db.getAll('tryons')) [t.imageId, t.thumbImageId].forEach((i) => i && ids.add(i));
   const c = (await db.get('settings', 'app'))?.couple;
   [c?.herAvatarId, c?.himAvatarId].forEach((i) => i && ids.add(i));

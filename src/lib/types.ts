@@ -45,7 +45,7 @@ export interface Garment {
 /** 她（三花貓）／他（橘貓）／共用 */
 export type Owner = 'her' | 'him' | 'both';
 
-export type ImageKind = 'garment-original' | 'garment-cutout' | 'person' | 'person-mask' | 'tryon' | 'thumbnail' | 'avatar';
+export type ImageKind = 'garment-original' | 'garment-cutout' | 'person' | 'person-mask' | 'person-parse' | 'tryon' | 'thumbnail' | 'avatar';
 export interface StoredImage {
   id: string;
   kind: ImageKind;
@@ -63,6 +63,8 @@ export interface PersonPhoto {
   thumbImageId: string;
   /** 人體遮罩 PNG（覆蓋 analysis.maskRect 區域） */
   maskImageId: string | null;
+  /** 人體部位圖（R=頭髮、G=皮膚、B=衣服；與遮罩同範圍）。舊資料沒有，重新辨識後產生 */
+  parseImageId?: string | null;
   name: string;
   analysis: import('../ai/body').BodyAnalysis | null;
   /** 使用者是否手動校正過關鍵點 */
@@ -99,6 +101,8 @@ export interface AppSettings {
   imageQuality: 'standard' | 'compact';
   /** 上次匯出備份時間 */
   lastBackupAt?: number;
+  /** 試穿光影融合強度 0~100（預設 60） */
+  tryOnShading?: number;
   /** 兩人的暱稱與自訂頭像（頭像圖片只存在這支手機） */
   couple?: CoupleSettings;
 }

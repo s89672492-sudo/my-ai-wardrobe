@@ -7,7 +7,7 @@
 ## 功能
 
 - 衣櫥管理：拍照或選照片，AI 去背（MediaPipe MagicTouch）、分類、顏色、季節、風格
-- AI 試穿：MoveNet 人體關鍵點 + Selfie Segmenter 人體輪廓，以 TPS 變形把衣服貼合到全身照，可多件疊穿
+- AI 試穿：MoveNet 人體關鍵點 + Selfie Segmenter 人體輪廓 + Multiclass 人體部位（頭髮／皮膚／衣服），以 TPS 變形把衣服貼合到全身照，可多件疊穿；頭髮自然蓋在衣服前、手臂遮擋依真實皮膚範圍，並套用照片原本的明暗與色調
 - 穿搭推薦：本機規則引擎（顏色搭配、季節、場合、正式程度）
 - 資料：IndexedDB 本機儲存、zip 備份與還原、儲存空間管理
 - 情侶衣櫥：衣服可標記是「她／他／共用」，衣櫥與穿搭推薦可分開看；可自訂兩人的暱稱與頭像
@@ -34,6 +34,7 @@
 |---|---|---|---|
 | MoveNet SinglePose Lightning float16 v4 | 人體關鍵點 | 4.5 MB | Apache-2.0 |
 | MediaPipe Selfie Segmenter v1 | 人體輪廓 | 0.2 MB | Apache-2.0 |
+| MediaPipe Selfie Multiclass 256×256 v1 | 頭髮、皮膚、衣服 | 15.6 MB | Apache-2.0 |
 | MediaPipe Interactive Segmenter (MagicTouch) v1 | 衣服去背 | 5.9 MB | Apache-2.0 |
 
 LiteRT.js 執行環境來自 npm 套件 `@litertjs/core`（`package-lock.json` 鎖定版本與完整性雜湊）。

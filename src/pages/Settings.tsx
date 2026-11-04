@@ -79,7 +79,7 @@ export function Settings() {
           <span>離線使用</span>
           {cached === null ? null : cached ? <Badge tone="ok">已下載</Badge> : <Badge tone="warn">尚未下載</Badge>}
         </div>
-        <p className="muted">人體辨識模型約 5 MB、去背模型約 6 MB、執行環境約 3 MB，下載一次後在手機上執行。瀏覽器仍可能在空間不足時清除快取，屆時會自動重新下載。</p>
+        <p className="muted">人體辨識模型約 21 MB、去背模型約 6 MB、執行環境約 3 MB，下載一次後在手機上執行。瀏覽器仍可能在空間不足時清除快取，屆時會自動重新下載。</p>
         <button className="btn" disabled={!!dl || !online} onClick={() => void downloadModels()}>
           {dl ? `⏳ ${dl}` : !online ? '目前離線，無法下載' : cached ? '重新下載 AI 模型' : '下載 AI 模型'}
         </button>

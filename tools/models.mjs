@@ -13,6 +13,12 @@ export const MODELS = [
     sha256: '0fac2226112d0371903ca86e3853cec24ef603a0b2f96f589b180f0ebdd135ab', // 2026-11-03 CI 首次下載鎖定
   },
   {
+    file: 'selfie_multiclass_256x256.tflite',
+    // MediaPipe Selfie Multiclass（背景／頭髮／身體皮膚／臉部皮膚／衣服／其他）float32 版本 1，Apache-2.0；試穿的頭髮、皮膚、光影
+    url: 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/1/selfie_multiclass_256x256.tflite',
+    sha256: 'c6748b1253a99067ef71f7e26ca71096cd449baefa8f101900ea23016507e0e0',
+  },
+  {
     file: 'magic_touch.tflite',
     // MediaPipe Interactive Segmenter（MagicTouch）float32 版本 1，Apache-2.0；衣服 AI 去背
     url: 'https://storage.googleapis.com/mediapipe-models/interactive_segmenter/magic_touch/float32/1/magic_touch.tflite',
