@@ -17,6 +17,8 @@ export const NO_ADJUST: Adjust = { dx: 0, dy: 0, scale: 1, rotate: 0, length: 1 
 export interface Correspondence { src: P2[]; dst: P2[]; labels: string[]; /** 衣服頂端中心（調整的旋轉／縮放中心） */ origin: P2; /** 身體軸向（往下）單位向量 */ down: P2; notes: string[] }
 
 /** 鬆份：衣服相對身體的最小外擴比例 */
+/** 洋裝、裙子下襬寬度上限（臀寬的倍數，半寬比） */
+const HEM_MAX = 1.1;
 const EASE: Record<TryOnKind, number> = { top: 1.05, outer: 1.1, dress: 1.05, pants: 1.04, shorts: 1.05, skirt: 1.06 };
 
 interface Body {
@@ -110,7 +112,9 @@ function upper(g: UpperAnchors, B: Body, notes: string[]): Omit<Correspondence, 
   const tOf = (gy: number) => ((gy - gTop[1]) * s + lift) / B.torso; // 對應身體軸向位置（0=肩關節線）
   const widthAt = (gy: number, gHalf: number, cover: boolean) => {
     const t = tOf(gy);
-    let half = Math.max(bodyHalfAt(B, t) * ease, gHalf * s);
+    // 平放拍的洋裝裙擺常攤得很開，穿上身會垂下來：照片比例的寬度最多到臀寬 2.2 倍（腿張開時另由 legCoverHalf 保證蓋住）
+    const gw = cover ? Math.min(gHalf * s, B.hipHalf * HEM_MAX) : gHalf * s;
+    let half = Math.max(bodyHalfAt(B, t) * ease, gw);
     if (cover) half = Math.max(half, legCoverHalf(B, t));
     return half;
   };
@@ -192,7 +196,7 @@ function lower(g: LowerAnchors, B: Body, notes: string[]): Omit<Correspondence, 
   if (g.kind === 'skirt') {
     const hemC = add(bandC, B.down, drop);
     const t = tBand + drop / B.torso;
-    const hHalf = Math.max(((g.hemR[0] - g.hemL[0]) / 2) * s, bodyHalfAt(B, t) * ease, legCoverHalf(B, t));
+    const hHalf = Math.max(Math.min(((g.hemR[0] - g.hemL[0]) / 2) * s, B.hipHalf * HEM_MAX), bodyHalfAt(B, t) * ease, legCoverHalf(B, t));
     push(g.hemL, add(hemC, B.across, -hHalf), '下襬');
     push(g.hemR, add(hemC, B.across, hHalf), '下襬');
     return { src, dst, labels, origin: bandC, notes };

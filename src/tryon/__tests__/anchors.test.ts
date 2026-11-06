@@ -20,6 +20,10 @@ const LONG = shape(400, 400, (x, y) => inRect(x, y, 120, 30, 280, 380) || inRect
 // 長褲（真實牛仔褲平放約為 長 ≈ 2.6 × 腰寬）：腰頭 100..300 × 20..120，褲管到 540
 const PANTS = shape(400, 560, (x, y) => inRect(x, y, 100, 20, 300, 120) || inRect(x, y, 100, 120, 195, 540) || inRect(x, y, 205, 120, 300, 540));
 const VERY_LONG = shape(400, 900, (x, y) => inRect(x, y, 100, 20, 300, 120) || inRect(x, y, 100, 120, 195, 880) || inRect(x, y, 205, 120, 300, 880));
+// A 字洋裝（平放，裙擺攤很開）：無袖上身 150..250 × 30..230，裙擺從腰往下張開到 10..390
+const ALINE = shape(400, 640, (x, y) => (y >= 30 && y < 230 && Math.abs(x - 200) < 50 && !(y < 50 && Math.abs(x - 200) < 20)) || (y >= 230 && y < 620 && Math.abs(x - 200) < 55 + (y - 230) * 0.36));
+// 短袖洋裝：上身 140..260，短袖在肩膀兩側 90..310 × 30..110，裙擺張開
+const SLEEVED_DRESS = shape(400, 640, (x, y) => (y >= 30 && y < 230 && Math.abs(x - 200) < 60) || (y >= 30 && y < 110 && Math.abs(x - 200) < 110) || (y >= 230 && y < 620 && Math.abs(x - 200) < 65 + (y - 230) * 0.3));
 // 裙子：梯形
 const SKIRT = shape(400, 300, (x, y) => y >= 20 && y < 280 && Math.abs(x - 200) < 70 + (y - 20) * 0.4);
 
@@ -107,6 +111,26 @@ describe('correspondences', () => {
     const c = correspondences(detectAnchors(LONG, 400, 400, 'top')!, spread);
     expect(c.labels.includes('袖口')).toBe(false);
     expect(c.notes.some((n) => /手臂角度/.test(n))).toBe(true);
+  });
+  it('A 字洋裝：裙擺最寬處不是袖子（否則會被拉到手上）', () => {
+    const g = detectAnchors(ALINE, 400, 640, 'dress') as UpperAnchors;
+    expect(g.sleeve).toBe('none');
+    expect(g.cuffL).toBeNull();
+  });
+  it('短袖洋裝：仍能偵測肩膀旁的短袖', () => {
+    const g = detectAnchors(SLEEVED_DRESS, 400, 640, 'dress') as UpperAnchors;
+    expect(g.sleeve).toBe('short');
+    expect(g.cuffL![1]).toBeLessThan(140);
+  });
+  it('攤開的 A 字洋裝＋手臂張開：裙擺寬度有上限、不跟著手走', () => {
+    const spread = analyzeBody(frontal({ left_elbow: [520, 270], left_wrist: [660, 275], right_elbow: [80, 270], right_wrist: [-60, 275] }), 600, 1200, null);
+    const g = detectAnchors(ALINE, 400, 640, 'dress')!;
+    const c = correspondences(g, spread, NO_ADJUST);
+    const hems = c.labels.map((l, i) => (l === '下襬' ? c.dst[i]! : null)).filter(Boolean) as [number, number][];
+    const hemW = Math.abs(hems[1]![0] - hems[0]![0]);
+    expect(hemW).toBeLessThan(spread.measures.hipWidth * 2.3);
+    // 不能有任何點被拉到手腕高度的外側
+    expect(c.labels).not.toContain('袖口');
   });
   it('手肘大幅彎曲時不強制對齊長袖', () => {
     const bent = analyzeBody(frontal({ left_elbow: [440, 400], left_wrist: [360, 330] }), 600, 1200, null);

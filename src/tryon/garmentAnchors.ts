@@ -145,9 +145,11 @@ export function detectAnchors(alpha: Uint8ClampedArray, w: number, h: number, ki
   // 腰線若和貼身的袖子連在一起，限制在衣身寬度附近
   const ws = { min: Math.max(ws0.min, cx - bodyW * 0.6), max: Math.min(ws0.max, cx + bodyW * 0.6) };
 
-  // 袖子：肩線到下襬之間，左右最外側的點；取最外側中最低的一點當袖口
+  // 袖子：肩線到下襬之間，左右最外側的點；取最外側中最低的一點當袖口。
+  // 洋裝只找到腰線：裙擺通常比袖子寬，否則裙擺兩角會被當成長袖袖口、被拉到手上
+  const sleeveTo = kind === 'dress' ? Math.min(wy, yAt(0.45)) : yAt(0.97);
   let minX = Infinity, maxX = -Infinity, minY = sy, maxY = sy;
-  for (let y = sy; y <= yAt(0.97); y++) {
+  for (let y = sy; y <= sleeveTo; y++) {
     const r = rows[y];
     if (!r) continue;
     if (r.min <= minX) { if (r.min < minX - 1 || y > minY) minY = y; minX = Math.min(minX, r.min); }
