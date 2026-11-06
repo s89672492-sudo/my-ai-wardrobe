@@ -108,6 +108,14 @@ try {
   await page.click('button:has-text("下一步：去背")');
   await page.waitForSelector('.cutout-stage');
   await idle();
+  ok((await page.locator('.tool:has-text("排除")').count()) === 1 && (await page.locator('.edge-refine input').isChecked()), 'cutout editor: exclude tool and edge refinement (on by default)');
+  // 排除：點在白色背景角落（不在去背範圍內）→ 應提示沒有需要排除的部分，衣服不受影響
+  await page.click('.tool:has-text("排除")');
+  const stage = page.locator('.cutout-stage canvas');
+  const sbox = await stage.boundingBox();
+  await page.mouse.click(sbox.x + 6, sbox.y + 6);
+  await idle();
+  ok(!(await page.locator('button:has-text("完成去背")').isDisabled()), 'exclude tap on background keeps the cutout usable');
   await page.click('button:has-text("完成去背")');
   await page.waitForSelector('.form');
   await page.waitForSelector('.ai-suggest', { timeout: 60000 }).catch(() => {});
