@@ -2,6 +2,7 @@
 export const CATEGORIES = [
   { id: 'tshirt', label: 'T-shirt', group: 'top' },
   { id: 'shirt', label: '襯衫', group: 'top' },
+  { id: 'tank', label: '背心', group: 'top' },
   { id: 'jacket', label: '外套', group: 'outer' },
   { id: 'pants', label: '長褲', group: 'bottom' },
   { id: 'shorts', label: '短褲', group: 'bottom' },

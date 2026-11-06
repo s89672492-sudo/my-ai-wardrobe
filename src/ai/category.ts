@@ -101,5 +101,8 @@ export function suggestCategory(top: { index: number; score: number }[], shape: 
   }
   if (!cat) return null;
   if (cat === 'tshirt' && shape && shape.aspect > 1.55 && shape.shoulderSpread < 1.15) { cat = 'dress'; reason = '依形狀判斷（長版、無明顯袖子）'; }
+  // 比寬還短的「洋裝」多半是短上衣；沒有袖子的上衣是背心
+  if (cat === 'dress' && shape && shape.aspect < 1.1) { cat = shape.shoulderSpread > 1.25 ? 'tshirt' : 'tank'; reason = '依形狀判斷（衣長比寬度短）'; }
+  if (cat === 'tshirt' && shape && shape.shoulderSpread < 1.05 && shape.aspect < 1.4) { cat = 'tank'; reason = 'AI 辨識＋形狀（沒有袖子）'; }
   return { category: cat, confidence: Math.min(1, conf), reason };
 }

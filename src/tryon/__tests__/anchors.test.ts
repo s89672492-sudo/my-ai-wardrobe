@@ -24,6 +24,8 @@ const VERY_LONG = shape(400, 900, (x, y) => inRect(x, y, 100, 20, 300, 120) || i
 const ALINE = shape(400, 640, (x, y) => (y >= 30 && y < 230 && Math.abs(x - 200) < 50 && !(y < 50 && Math.abs(x - 200) < 20)) || (y >= 230 && y < 620 && Math.abs(x - 200) < 55 + (y - 230) * 0.36));
 // 短袖洋裝：上身 140..260，短袖在肩膀兩側 90..310 × 30..110，裙擺張開
 const SLEEVED_DRESS = shape(400, 640, (x, y) => (y >= 30 && y < 230 && Math.abs(x - 200) < 60) || (y >= 30 && y < 110 && Math.abs(x - 200) < 110) || (y >= 230 && y < 620 && Math.abs(x - 200) < 65 + (y - 230) * 0.3));
+// 細肩帶短背心（照片常比衣服寬）：肩帶 158..166、234..242 × 20..110，衣身 130..270 × 110..230
+const CAMI = shape(400, 260, (x, y) => (y >= 20 && y < 110 && ((x >= 158 && x < 166) || (x >= 234 && x < 242))) || (y >= 110 && y < 230 && x >= 130 && x < 270));
 // 裙子：梯形
 const SKIRT = shape(400, 300, (x, y) => y >= 20 && y < 280 && Math.abs(x - 200) < 70 + (y - 20) * 0.4);
 
@@ -116,6 +118,19 @@ describe('correspondences', () => {
     const g = detectAnchors(ALINE, 400, 640, 'dress') as UpperAnchors;
     expect(g.sleeve).toBe('none');
     expect(g.cuffL).toBeNull();
+  });
+  it('細肩帶背心：肩點在肩帶頂端，衣身在胸口', () => {
+    const g = detectAnchors(CAMI, 400, 260, 'top') as UpperAnchors;
+    expect(g.straps).toBe(true);
+    expect(g.shoulderL[1]).toBeLessThan(30);
+    expect(g.sleeve).toBe('none');
+    const c = correspondences(g, body, NO_ADJUST);
+    const sh = c.dst[0]!, hem = c.dst[c.labels.indexOf('下襬')]!;
+    // 短背心：下襬在腰線附近，不會拉到大腿
+    expect(hem[1] - sh[1]).toBeLessThan(body.measures.torsoLength * 0.95);
+  });
+  it('一般 T-shirt 不會被當成細肩帶', () => {
+    expect((detectAnchors(TEE, 400, 400, 'top') as UpperAnchors).straps).toBe(false);
   });
   it('短袖洋裝：仍能偵測肩膀旁的短袖', () => {
     const g = detectAnchors(SLEEVED_DRESS, 400, 640, 'dress') as UpperAnchors;

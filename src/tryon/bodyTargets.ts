@@ -102,7 +102,8 @@ function along(pts: Pt[], d: number): Pt {
 function upper(g: UpperAnchors, B: Body, notes: string[]): Omit<Correspondence, 'origin' | 'down'> & { origin: Pt } {
   const ease = EASE[g.kind];
   const gShW = Math.max(1, g.shoulderR[0] - g.shoulderL[0]);
-  const shHalf = B.seamHalf * (g.kind === 'outer' ? 1.05 : 1.0);
+  // 細肩帶衣身比肩膀窄一些（肩帶落在肩膀內側）
+  const shHalf = B.seamHalf * (g.kind === 'outer' ? 1.05 : g.straps ? 0.9 : 1.0);
   const s = (shHalf * 2) / gShW; // 衣服像素 → 畫面像素
   const lift = B.torso * 0.05;   // 肩線縫位在肩關節上方
   const top = add(B.neck, B.down, -lift);
@@ -124,6 +125,9 @@ function upper(g: UpperAnchors, B: Body, notes: string[]): Omit<Correspondence, 
   };
   const src: P2[] = [], dst: P2[] = [], labels: string[] = [];
   const push = (gs: P2, d: Pt, l: string) => { src.push(gs); dst.push(p2(d)); labels.push(l); };
+  if (g.kind === 'dress' && (g.hemL[1] - g.shoulderL[1]) < (g.hemR[0] - g.hemL[0]) * 1.1) {
+    notes.push('這件「洋裝」比寬度還短，看起來比較像上衣或背心。到衣服頁把分類改成「背心」或「T-shirt」，試穿會比較自然');
+  }
   push(g.shoulderL, add(top, B.across, -shHalf), '肩');
   push(g.shoulderR, add(top, B.across, shHalf), '肩');
   const [wl, wr] = pair(g.waistL, g.waistR);

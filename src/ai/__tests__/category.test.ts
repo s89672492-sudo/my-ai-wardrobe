@@ -45,6 +45,11 @@ describe('category suggestion', () => {
     expect(suggestCategory(jersey, shapeOf(tee, W, 220))!.category).toBe('tshirt');
     expect(suggestCategory(jersey, shapeOf(dress, W, 400))!.category).toBe('dress');
   });
+  it('turns a short, wide "dress" or a sleeveless top into a tank top', () => {
+    const cami = silhouette(W, 150, (x, y) => (y < 0.4 ? (Math.abs(x - 0.38) < 0.02 || Math.abs(x - 0.62) < 0.02) : Math.abs(x - 0.5) < 0.42));
+    expect(suggestCategory([{ index: 578, score: 0.3 }], shapeOf(cami, W, 150))!.category).toBe('tank');
+    expect(suggestCategory(jersey, shapeOf(cami, W, 150))!.category).toBe('tank');
+  });
   it('gives no suggestion when nothing matches', () => {
     expect(suggestCategory([{ index: 885, score: 0.7 }], shapeOf(skirt, W, 200))).toBeNull();
   });

@@ -11,7 +11,7 @@ export type TryOnKind = 'top' | 'outer' | 'dress' | 'pants' | 'shorts' | 'skirt'
 export type SleeveKind = 'none' | 'short' | 'long';
 
 export const KIND_OF: Partial<Record<CategoryId, TryOnKind>> = {
-  tshirt: 'top', shirt: 'top', jacket: 'outer', dress: 'dress', pants: 'pants', shorts: 'shorts', skirt: 'skirt',
+  tshirt: 'top', shirt: 'top', tank: 'top', jacket: 'outer', dress: 'dress', pants: 'pants', shorts: 'shorts', skirt: 'skirt',
 };
 export const KIND_ZH: Record<TryOnKind, string> = { top: '上衣', outer: '外套', dress: '洋裝', pants: '長褲', shorts: '短褲', skirt: '裙子' };
 export const isUpper = (k: TryOnKind) => k === 'top' || k === 'outer' || k === 'dress';
@@ -22,6 +22,8 @@ export interface UpperAnchors {
   shoulderL: P2; shoulderR: P2; waistL: P2; waistR: P2; hemL: P2; hemR: P2;
   cuffL: P2 | null; cuffR: P2 | null;
   sleeve: SleeveKind;
+  /** 細肩帶（背心、小可愛、吊帶洋裝）：肩點在肩帶頂端，而不是衣身上緣 */
+  straps?: boolean;
   /** 衣身中心 x */
   cx: number;
 }
@@ -123,10 +125,19 @@ export function detectAnchors(alpha: Uint8ClampedArray, w: number, h: number, ki
   // 肩線：由上往下，第一列寬度達衣身寬 95%（領口、斜肩已展開到衣身寬）。
   // bodyW 已排除袖子，所以門檻要接近 100%，否則會落在領口斜肩上、肩寬偏窄
   let sy = y0;
-  for (let y = y0; y <= yAt(0.4); y++) { const r = rows[y]; if (r && r.max - r.min >= bodyW * 0.95) { sy = y; break; } }
+  // 細肩帶背心的肩帶可能佔衣長一半，所以找到 60%
+  for (let y = y0; y <= yAt(0.6); y++) { const r = rows[y]; if (r && r.max - r.min >= bodyW * 0.95) { sy = y; break; } }
   const sr = rows[sy]!;
-  const shoulderL: P2 = [Math.max(sr.min, cx - bodyW / 2), sy];
-  const shoulderR: P2 = [Math.min(sr.max, cx + bodyW / 2), sy];
+  // 細肩帶：衣身上緣以上只有細細的帶子（不透明像素少於衣身寬的 35%）
+  let straps = false;
+  if (sy - y0 > H * 0.08) {
+    const fills: number[] = [];
+    for (let y = y0; y < sy; y++) { let n = 0; for (let x = 0; x < w; x++) if (alpha[(y * w + x) * 4 + 3]! > THR) n++; fills.push(n / bodyW); }
+    straps = median(fills) < 0.35;
+  }
+  const shY = straps ? y0 : sy;
+  const shoulderL: P2 = [Math.max(sr.min, cx - bodyW / 2), shY];
+  const shoulderR: P2 = [Math.min(sr.max, cx + bodyW / 2), shY];
 
   // 下襬：上衣用中央段（排除垂到下襬的長袖袖口），洋裝用整列
   const hem = bandAvg(yAt(0.95), y1, (y) => (kind === 'dress' ? rows[y] : centralSegment(alpha, w, y, cx))) ?? { min: cx - bodyW / 2, max: cx + bodyW / 2 };
@@ -165,7 +176,7 @@ export function detectAnchors(alpha: Uint8ClampedArray, w: number, h: number, ki
     sleeve = len / torsoLen < (kind === 'dress' ? 0.3 : 0.5) ? 'short' : 'long';
   }
   return {
-    kind, w, h, cx, sleeve, cuffL, cuffR,
+    kind, w, h, cx, sleeve, cuffL, cuffR, straps,
     shoulderL, shoulderR, waistL: [ws.min, wy], waistR: [ws.max, wy], hemL: [hem.min, y1], hemR: [hem.max, y1],
   };
 }

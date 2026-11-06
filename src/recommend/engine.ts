@@ -34,7 +34,7 @@ export interface Recommendation {
 }
 export interface RecommendResult { items: Recommendation[]; problem: string | null; /** 符合條件的組合總數 */ total: number }
 
-const TOP: CategoryId[] = ['tshirt', 'shirt'], BOTTOM: CategoryId[] = ['pants', 'shorts', 'skirt'];
+const TOP: CategoryId[] = ['tshirt', 'shirt', 'tank'], BOTTOM: CategoryId[] = ['pants', 'shorts', 'skirt'];
 
 export function currentSeason(d = new Date()): Season {
   const m = d.getMonth() + 1;
@@ -48,7 +48,7 @@ export function rng(seed: number) {
 }
 
 // ---- 屬性 ----
-const BASE_FORMALITY: Partial<Record<CategoryId, number>> = { tshirt: 0.2, shirt: 0.65, jacket: 0.5, pants: 0.55, shorts: 0.1, skirt: 0.5, dress: 0.6, shoes: 0.45, bag: 0.5 };
+const BASE_FORMALITY: Partial<Record<CategoryId, number>> = { tshirt: 0.2, shirt: 0.65, tank: 0.2, jacket: 0.5, pants: 0.55, shorts: 0.1, skirt: 0.5, dress: 0.6, shoes: 0.45, bag: 0.5 };
 const KEYWORDS: [RegExp, number][] = [
   [/西裝|blazer|套裝|西褲|正裝/i, 0.92], [/襯衫|polo/i, 0.68], [/雪紡|緞面|洋裝|連身裙/i, 0.65], [/針織|毛衣|開襟/i, 0.5],
   [/牛仔|丹寧|denim/i, 0.3], [/帽t|連帽|hoodie|衛衣|大學t/i, 0.12], [/運動|瑜伽|慢跑|sport|球/i, 0.05],
@@ -109,7 +109,7 @@ export function recommend(inp: RecommendInput): RecommendResult {
   const byCat = (cats: CategoryId[]) => inp.garments.filter((g) => cats.includes(g.category));
   let tops = byCat(TOP), bottoms = byCat(BOTTOM), dresses = byCat(['dress']), outers = byCat(['jacket']);
   const shoes = byCat(['shoes']), bags = byCat(['bag']);
-  if (!tops.length && !dresses.length) return { items: [], problem: '衣櫥裡需要至少一件上衣（T-shirt、襯衫）或洋裝', total: 0 };
+  if (!tops.length && !dresses.length) return { items: [], problem: '衣櫥裡需要至少一件上衣（T-shirt、襯衫、背心）或洋裝', total: 0 };
   if (!dresses.length && !bottoms.length) return { items: [], problem: '衣櫥裡需要至少一件下身（長褲、短褲、裙子）或洋裝', total: 0 };
 
   // 季節過濾（季節模式或任何模式都排除明顯不合季的）
