@@ -84,6 +84,7 @@ export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { per
   const { settings, update } = useSettings();
   const perf = useMemo(() => perfFor(settings), [settings]);
   const shadingPct = settings.tryOnShading ?? 60;
+  const eraseOld = settings.tryOnErase ?? true;
   const lastDraft = useRef(0);
   // 合成引擎（背景 Worker）；離開試穿頁時結束並釋放記憶體
   const engine = useMemo(() => new ComposeEngine(), []);
@@ -164,8 +165,8 @@ export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { per
 
   const inputFor = useCallback((draft: boolean, anchorsOn: boolean): ComposeInput | null => {
     if (!photo || !person?.analysis || !layers.length) return null;
-    return { photo, mask, parse, shading: shadingPct / 100, analysis: person.analysis, layers, draft, showAnchors: anchorsOn, grid: perf.grid, draftGrid: perf.draftGrid };
-  }, [photo, mask, parse, shadingPct, person, layers, perf]);
+    return { photo, mask, parse, shading: shadingPct / 100, eraseOld, analysis: person.analysis, layers, draft, showAnchors: anchorsOn, grid: perf.grid, draftGrid: perf.draftGrid };
+  }, [photo, mask, parse, shadingPct, eraseOld, person, layers, perf]);
 
   const compose = useCallback((draft: boolean) => {
     const inp = inputFor(draft, showAnchors);
@@ -345,6 +346,10 @@ export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { per
               <b>{shadingPct}%</b>
             </label>
             <p className="muted small-note">把照片中原本的明暗、皺褶與環境色調套到衣服上，看起來比較不像貼上去的。</p>
+            <label className="option toggle">
+              <span><b>擦掉露出來的舊衣服</b><small>新衣服沒蓋到的舊衣服，用旁邊的背景或膚色補上（試穿上衣只處理腰線以上、褲裙只處理腰線以下）</small></span>
+              <input type="checkbox" role="switch" checked={eraseOld} disabled={!parse} onChange={(e) => void update({ tryOnErase: e.target.checked })} />
+            </label>
             {person && !person.parseImageId && (
               <p className="muted small-note">這張全身照是舊版辨識。<a href={`#/tryon/person/${person.id}`}>重新辨識</a>後，頭髮會自然垂在衣服前、手臂邊緣也更準。</p>
             )}
@@ -400,7 +405,7 @@ export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { per
           <p className="muted center">本機合成 {Math.round(result.ms)} ms · {layers.length} 件</p>
         </>
       )}
-      <p className="disclaimer">說明：試穿圖是把衣服照片依身體關鍵點變形後合成的 2D 預覽（電腦視覺 + 圖像合成），不是生成式 AI。「光影」會借用照片中原本的明暗與皺褶，但不會重建新衣服本身的布料皺褶、被遮住的部分與實際合身度，僅供搭配參考。</p>
+      <p className="disclaimer">說明：試穿圖是把衣服照片依身體關鍵點變形後合成的 2D 預覽（電腦視覺 + 圖像合成），不是生成式 AI。「光影」會借用照片中原本的明暗與皺褶；擦掉舊衣服後補上的是推估的背景與膚色，不是真實照到的身體。不會重建新衣服本身的布料皺褶與實際合身度，僅供搭配參考。</p>
     </div>
   );
 }

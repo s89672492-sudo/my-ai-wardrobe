@@ -5,7 +5,7 @@
  * 並把照片中原本衣服的明暗（皺褶、光線方向）與環境色調套到新衣服上。
  * 這是電腦視覺 + 圖像合成，不是生成式 AI：不會重建新衣服本身的布料皺褶或被遮住的部分。
  */
-import { MIN_SCORE, type BodyAnalysis, type Pt } from '../ai/body';
+import { MIN_SCORE, WAIST_T, type BodyAnalysis, type Pt } from '../ai/body';
 import { bodyLine, correspondences, type Adjust } from './bodyTargets';
 import { isUpper, type GarmentAnchors, type TryOnKind } from './garmentAnchors';
 import { drawWarped, TPS, type P2 } from './tps';
@@ -26,6 +26,8 @@ export interface ComposeInput {
   parse?: HTMLCanvasElement | null;
   /** 光影融合強度 0~1（預設 0.6） */
   shading?: number;
+  /** 擦掉新衣服沒蓋到、露出來的舊衣服（需要部位圖；預設開啟） */
+  eraseOld?: boolean;
   analysis: BodyAnalysis;
   layers: Layer[];
   /** 拖曳中用較粗的網格加速 */
@@ -280,6 +282,156 @@ function sceneTint(inp: ComposeInput, raw: HTMLCanvasElement): string {
   return `rgb(${ch(R)},${ch(G)},${ch(B)})`;
 }
 
+/**
+ * 推拉式補圖（pull-push）：已知像素逐層平均到低解析度，再由粗到細把未知像素補上（雙線性取樣）。
+ * 只用「不是衣服」的像素（背景、皮膚）當來源，所以補出來的是背景或膚色，不會補成舊衣服。
+ */
+export function pullPush(rgb: Float32Array, wt: Float32Array, w: number, h: number) {
+  type Lv = { w: number; h: number; c: Float32Array; a: Float32Array };
+  const levels: Lv[] = [{ w, h, c: new Float32Array(rgb.length), a: new Float32Array(wt) }];
+  for (let i = 0; i < w * h; i++) for (let k = 0; k < 3; k++) levels[0]!.c[i * 3 + k] = rgb[i * 3 + k]! * wt[i]!;
+  while (levels.at(-1)!.w > 1 || levels.at(-1)!.h > 1) {
+    const f = levels.at(-1)!, nw = Math.ceil(f.w / 2), nh = Math.ceil(f.h / 2);
+    const c = new Float32Array(nw * nh * 3), a = new Float32Array(nw * nh);
+    for (let y = 0; y < f.h; y++) for (let x = 0; x < f.w; x++) {
+      const i = y * f.w + x, j = (y >> 1) * nw + (x >> 1);
+      a[j] = a[j]! + f.a[i]!; c[j * 3] = c[j * 3]! + f.c[i * 3]!; c[j * 3 + 1] = c[j * 3 + 1]! + f.c[i * 3 + 1]!; c[j * 3 + 2] = c[j * 3 + 2]! + f.c[i * 3 + 2]!;
+    }
+    for (let j = 0; j < nw * nh; j++) if (a[j]! > 1) { const s = 1 / a[j]!; a[j] = 1; c[j * 3]! *= s; c[j * 3 + 1]! *= s; c[j * 3 + 2]! *= s; }
+    levels.push({ w: nw, h: nh, c, a });
+  }
+  // 由粗到細：未知（權重 < 1）的部分由上一層雙線性取樣補滿
+  for (let l = levels.length - 2; l >= 0; l--) {
+    const f = levels[l]!, g = levels[l + 1]!;
+    const sample = (x: number, y: number, k: number) => {
+      const gx = Math.min(g.w - 1, Math.max(0, (x + 0.5) / 2 - 0.5)), gy = Math.min(g.h - 1, Math.max(0, (y + 0.5) / 2 - 0.5));
+      const x0 = Math.floor(gx), y0 = Math.floor(gy), x1 = Math.min(g.w - 1, x0 + 1), y1 = Math.min(g.h - 1, y0 + 1), fx = gx - x0, fy = gy - y0;
+      const v = (xx: number, yy: number) => { const j = yy * g.w + xx; return g.a[j]! > 0 ? g.c[j * 3 + k]! / g.a[j]! : 0; };
+      return (v(x0, y0) * (1 - fx) + v(x1, y0) * fx) * (1 - fy) + (v(x0, y1) * (1 - fx) + v(x1, y1) * fx) * fy;
+    };
+    for (let y = 0; y < f.h; y++) for (let x = 0; x < f.w; x++) {
+      const i = y * f.w + x, a = Math.min(1, f.a[i]!);
+      if (a >= 1) continue;
+      for (let k = 0; k < 3; k++) f.c[i * 3 + k] = f.c[i * 3 + k]! + (1 - a) * sample(x, y, k);
+      f.a[i] = 1;
+    }
+  }
+  const out = new Float32Array(w * h * 3), L0 = levels[0]!;
+  for (let i = 0; i < w * h; i++) { const a = L0.a[i]! || 1; for (let k = 0; k < 3; k++) out[i * 3 + k] = L0.c[i * 3 + k]! / a; }
+  return out;
+}
+
+/** 以 pull-push 補圖；known 為來源像素的遮罩（alpha），回傳放大到照片尺寸的畫布 */
+function fillFrom(photo: HTMLCanvasElement, known: (i: number) => number, w: number, h: number, px: Uint8ClampedArray): HTMLCanvasElement {
+  const rgb = new Float32Array(w * h * 3), wt = new Float32Array(w * h);
+  let any = 0;
+  for (let i = 0; i < w * h; i++) { rgb[i * 3] = px[i * 4]!; rgb[i * 3 + 1] = px[i * 4 + 1]!; rgb[i * 3 + 2] = px[i * 4 + 2]!; wt[i] = known(i); any += wt[i]!; }
+  if (any < 4) for (let i = 0; i < w * h; i++) wt[i] = 1; // 沒有可用來源：維持原圖
+  const f = pullPush(rgb, wt, w, h);
+  const sm = canvas(w, h), sx = ctx(sm), d = sx.createImageData(w, h);
+  for (let i = 0; i < w * h; i++) { d.data[i * 4] = f[i * 3]!; d.data[i * 4 + 1] = f[i * 3 + 1]!; d.data[i * 4 + 2] = f[i * 3 + 2]!; d.data[i * 4 + 3] = 255; }
+  sx.putImageData(d, 0, 0);
+  const big = canvas(photo.width, photo.height), bx = ctx(big);
+  bx.imageSmoothingQuality = 'high';
+  bx.drawImage(sm, 0, 0, photo.width, photo.height);
+  return big;
+}
+
+/**
+ * 推估「衣服底下的身體」範圍（軀幹、脖子、手臂、腿），用關鍵點畫出。
+ * 擦掉舊衣服後，身體範圍內補膚色、範圍外補背景（真實情況是手臂＋背景，而不是兩者混成的咖啡色）。
+ */
+function bodyShape(inp: ComposeInput, scale: number, widen = 1): HTMLCanvasElement {
+  const { photo, analysis } = inp, K = analysis.keypoints, ok = (i: number) => K[i]!.score >= MIN_SCORE;
+  const shW = analysis.measures.shoulderWidth;
+  const c = canvas(Math.ceil(photo.width * scale), Math.ceil(photo.height * scale)), x = ctx(c);
+  x.scale(scale, scale);
+  x.fillStyle = '#fff'; x.strokeStyle = '#fff'; x.lineCap = 'round'; x.lineJoin = 'round';
+  const line = (pts: number[], r: number) => {
+    const ps = pts.filter(ok);
+    if (ps.length < 2) return;
+    x.lineWidth = r * 2 * widen; x.beginPath(); x.moveTo(K[ps[0]!]!.x, K[ps[0]!]!.y);
+    for (const i of ps.slice(1)) x.lineTo(K[i]!.x, K[i]!.y);
+    x.stroke();
+  };
+  if ([5, 6, 11, 12].every(ok)) {
+    // 軀幹略內縮
+    const cxm = (K[5]!.x + K[6]!.x + K[11]!.x + K[12]!.x) / 4, cym = (K[5]!.y + K[6]!.y + K[11]!.y + K[12]!.y) / 4;
+    const p = (i: number) => [cxm + (K[i]!.x - cxm) * 0.92 * widen, cym + (K[i]!.y - cym) * 0.95] as const;
+    x.beginPath(); x.moveTo(...p(5)); x.lineTo(...p(6)); x.lineTo(...p(12)); x.lineTo(...p(11)); x.closePath(); x.fill();
+    // 脖子：肩膀中點往鼻子方向
+    if (ok(0)) {
+      const mx = (K[5]!.x + K[6]!.x) / 2, my = (K[5]!.y + K[6]!.y) / 2;
+      x.lineWidth = shW * 0.32 * widen; x.beginPath(); x.moveTo(mx, my); x.lineTo(mx + (K[0]!.x - mx) * 0.6, my + (K[0]!.y - my) * 0.6); x.stroke();
+    }
+  }
+  line([5, 7, 9], shW * 0.1);
+  line([6, 8, 10], shW * 0.1);
+  line([11, 13, 15], shW * 0.15);
+  line([12, 14, 16], shW * 0.15);
+  return c;
+}
+
+/** 整張照片中「舊衣服」都被補掉的版本：身體範圍補膚色、其他補背景（1/4 解析度計算後放大，柔和不帶紋路） */
+function clothesFreePhoto(inp: ComposeInput, parts: NonNullable<ReturnType<typeof parseMasks>>, raw: HTMLCanvasElement): HTMLCanvasElement {
+  const { photo } = inp;
+  const W = photo.width, H = photo.height, k = 0.25;
+  const w = Math.max(8, Math.round(W * k)), h = Math.max(8, Math.round(H * k));
+  const small = (c: HTMLCanvasElement, dil = 0) => {
+    const t = canvas(w, h), tx = ctx(t);
+    tx.imageSmoothingQuality = 'high';
+    const offs = dil ? [[0, 0], [dil, 0], [-dil, 0], [0, dil], [0, -dil]] : [[0, 0]];
+    for (const [ox, oy] of offs) tx.drawImage(c, ox!, oy!, w, h);
+    return tx.getImageData(0, 0, w, h).data;
+  };
+  const px = small(photo);
+  const clothes = small(parts.clothes, 1), skin = small(parts.skin), person = small(raw, 1);
+  // 背景：不是人、不是衣服；皮膚：部位圖判定為皮膚
+  const bg = fillFrom(photo, (i) => (person[i * 4 + 3]! < 60 && clothes[i * 4 + 3]! < 50 ? 1 : 0), w, h, px);
+  const sk = fillFrom(photo, (i) => (skin[i * 4 + 3]! > 160 && clothes[i * 4 + 3]! < 50 ? 1 : 0), w, h, px);
+  // 身體範圍以半解析度畫再放大，邊緣柔和
+  const shape = bodyShape(inp, 0.5);
+  const out = canvas(W, H), o = ctx(out);
+  o.drawImage(bg, 0, 0);
+  const t = canvas(W, H), tx = ctx(t);
+  tx.drawImage(sk, 0, 0);
+  tx.globalCompositeOperation = 'destination-in';
+  tx.imageSmoothingQuality = 'high';
+  tx.drawImage(shape, 0, 0, W, H);
+  o.drawImage(t, 0, 0);
+  return out;
+}
+
+/** 袖子可能出現的範圍：肩膀到手腕的寬膠囊（含寬袖） */
+function sleeveZone(inp: ComposeInput): HTMLCanvasElement {
+  const { photo, analysis } = inp, K = analysis.keypoints, ok = (i: number) => K[i]!.score >= MIN_SCORE;
+  const shW = analysis.measures.shoulderWidth, k = 0.5;
+  const c = canvas(Math.ceil(photo.width * k), Math.ceil(photo.height * k)), x = ctx(c);
+  x.scale(k, k); x.strokeStyle = '#fff'; x.lineCap = 'round'; x.lineJoin = 'round'; x.lineWidth = shW * 0.55;
+  for (const arm of [[5, 7, 9], [6, 8, 10]]) {
+    const ps = arm.filter(ok);
+    if (ps.length < 2) continue;
+    x.beginPath(); x.moveTo(K[ps[0]!]!.x, K[ps[0]!]!.y);
+    for (const i of ps.slice(1)) x.lineTo(K[i]!.x, K[i]!.y);
+    x.stroke();
+  }
+  return c;
+}
+
+/**
+ * 要擦掉的舊衣服範圍（依試穿的衣服種類）：
+ * 上衣／外套 → 腰線以上；褲子／裙子 → 腰線以下；洋裝或上下都有 → 全部。
+ * 敞開的外套且沒有新上衣時不擦上半身（開口要看得到原本的上衣）。
+ */
+function eraseZone(layers: Layer[]): { upper: boolean; lower: boolean } {
+  const kinds = layers.map((l) => l.anchors.kind);
+  const hasTop = kinds.some((k) => k === 'top' || k === 'dress');
+  const outerOpen = layers.some((l) => l.anchors.kind === 'outer' && l.openFront);
+  const upper = hasTop || (kinds.includes('outer') && !outerOpen);
+  const lower = kinds.some((k) => k === 'pants' || k === 'shorts' || k === 'skirt' || k === 'dress');
+  return { upper, lower };
+}
+
 /** 以身體軸向的一條線切半平面（below = 往身體下方那一側） */
 function halfPlane(x: CanvasRenderingContext2D, line: { p: P2; across: P2 }, side: 'below' | 'above', size: number, op: GlobalCompositeOperation) {
   const { p, across } = line, f = size * 2, s = side === 'below' ? 1 : -1;
@@ -350,6 +502,34 @@ export function composeTryOn(inp: ComposeInput): ComposeOutput {
   lap('mask');
 
   const layers = [...inp.layers].sort((a, b) => (a.z ?? Z[a.anchors.kind]) - (b.z ?? Z[b.anchors.kind]));
+  // 擦掉露出來的舊衣服：在新衣服之下先鋪一層「舊衣服被補掉」的照片（只在對應範圍）
+  if (parts && inp.eraseOld !== false && layers.length) {
+    const z = eraseZone(layers);
+    if (z.upper || z.lower) {
+      const erase = cached(pOwner, `erase|${mk}|${z.upper}|${z.lower}`, () => {
+        const fill = cached(pOwner, `fill|${mk}`, () => clothesFreePhoto(inp, parts, raw))!;
+        const c = canvas(W, H), x = ctx(c);
+        x.drawImage(fill, 0, 0);
+        const m = canvas(W, H), mx = ctx(m);
+        const d = Math.max(1, shW * 0.012);
+        for (const [ox, oy] of [[0, 0], [d, 0], [-d, 0], [0, d], [0, -d]]) mx.drawImage(parts.clothes, ox!, oy!);
+        if (!(z.upper && z.lower)) {
+          // 範圍：上衣＝腰線以上＋整條手臂附近（袖子屬於上衣）；下身＝腰線以下、但不含手臂附近
+          const zone = canvas(W, H), zx = ctx(zone);
+          halfPlane(zx, bodyLine(analysis, WAIST_T), z.upper ? 'above' : 'below', W + H, 'source-over');
+          const arms = sleeveZone(inp);
+          zx.globalCompositeOperation = z.upper ? 'source-over' : 'destination-out';
+          zx.drawImage(arms, 0, 0, W, H);
+          mx.globalCompositeOperation = 'destination-in';
+          mx.drawImage(zone, 0, 0);
+        }
+        x.globalCompositeOperation = 'destination-in';
+        x.drawImage(m, 0, 0);
+        return c;
+      })!;
+      o.drawImage(erase, 0, 0);
+    }
+  }
   for (const L of layers) {
     const g = L.anchors;
     const corr = correspondences(g, analysis, L.adjust);

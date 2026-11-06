@@ -123,6 +123,8 @@ try {
   ok(!(await page.locator('.alert-err').count()), `try-on composed (${ms1})`);
   const lastCompose = await page.evaluate(() => { try { const m = JSON.parse(localStorage.getItem('wardrobe-metrics-v1') || '{}'); return m.compose?.at(-1)?.detail ?? ''; } catch { return ''; } });
   ok(lastCompose && !lastCompose.includes('主執行緒'), `try-on composed in background worker (${lastCompose})`);
+  const eraseToggle = page.locator('label.option:has-text("擦掉露出來的舊衣服") input');
+  ok((await eraseToggle.count()) === 1 && (await eraseToggle.isChecked()) && !(await eraseToggle.isDisabled()), 'old-clothes eraser available and on by default');
   await page.screenshot({ path: path.join(OUT, `${tag}-tryon.png`), fullPage: true });
   await page.click('button[role=tab]:has-text("手動調整")');
   await page.locator('.slider input').first().fill('1.15');

@@ -104,7 +104,7 @@ export class ComposeEngine {
       const id = ++this.seq;
       const t0 = performance.now();
       const done = new Promise<ComposeResult>((resolve, reject) => this.waiting.set(id, { resolve, reject, t0 }));
-      this.post({ type: 'compose', id, layers, draft: inp.draft, showAnchors: inp.showAnchors, grid: inp.grid, draftGrid: inp.draftGrid, shading: inp.shading });
+      this.post({ type: 'compose', id, layers, draft: inp.draft, showAnchors: inp.showAnchors, grid: inp.grid, draftGrid: inp.draftGrid, shading: inp.shading, eraseOld: inp.eraseOld });
       return done;
     });
     this.chain = job.catch(() => undefined);

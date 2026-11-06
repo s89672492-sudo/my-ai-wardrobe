@@ -38,7 +38,7 @@ self.onmessage = (e: MessageEvent<ComposeWorkerRequest>) => {
         if (!image) throw new Error('衣服圖片尚未載入');
         layers.push({ id: l.id, image, anchors: l.anchors, adjust: l.adjust, z: l.z, cutBelowT: l.cutBelowT, openFront: l.openFront });
       }
-      const r = composeTryOn({ ...person, layers, draft: m.draft, showAnchors: m.showAnchors, grid: m.grid, draftGrid: m.draftGrid, shading: m.shading });
+      const r = composeTryOn({ ...person, layers, draft: m.draft, showAnchors: m.showAnchors, grid: m.grid, draftGrid: m.draftGrid, shading: m.shading, eraseOld: m.eraseOld });
       const bitmap = (r.canvas as unknown as OffscreenCanvas).transferToImageBitmap();
       post({ type: 'composed', id: m.id, bitmap, notes: r.notes, ms: r.ms, anchors: r.anchors }, [bitmap]);
     }

@@ -10,7 +10,7 @@ export type ComposeWorkerRequest =
   | { type: 'forget'; keys: string[] }
   | {
       type: 'compose'; id: number; layers: ComposeLayerMsg[]; draft?: boolean; showAnchors?: boolean;
-      grid?: { cols: number; rows: number }; draftGrid?: { cols: number; rows: number }; shading?: number;
+      grid?: { cols: number; rows: number }; draftGrid?: { cols: number; rows: number }; shading?: number; eraseOld?: boolean;
     };
 
 export type ComposeWorkerResponse =
