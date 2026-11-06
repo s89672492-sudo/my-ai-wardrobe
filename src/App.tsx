@@ -20,6 +20,7 @@ import { GarmentDetail } from './pages/GarmentDetail';
 import { GarmentEditor } from './pages/GarmentEditor';
 import { PersonPage } from './pages/PersonPage';
 import { DataPage } from './pages/DataPage';
+import { BatchAdd } from './pages/BatchAdd';
 import { Acceptance } from './pages/Acceptance';
 import { TryOnStudio } from './pages/TryOnStudio';
 
@@ -75,6 +76,7 @@ export default function App() {
         {route.name === 'home' && <Home />}
         {route.name === 'wardrobe' && <Wardrobe />}
         {route.name === 'garment-new' && <GarmentEditor key="new" />}
+        {route.name === 'garment-batch' && <BatchAdd />}
         {route.name === 'garment' && <GarmentDetail key={route.id} id={route.id} />}
         {route.name === 'garment-edit' && <GarmentEditor key={`edit-${route.id}`} id={route.id} />}
         {route.name === 'tryon' && <TryOn />}
@@ -93,7 +95,7 @@ export default function App() {
           <button className="btn btn-small btn-primary" onClick={() => void updateServiceWorker(true)}>更新</button>
         </div>
       )}
-      {!['garment-new', 'garment-edit'].includes(route.name) && <BottomNav route={route} />}
+      {!['garment-new', 'garment-edit', 'garment-batch'].includes(route.name) && <BottomNav route={route} />}
     </SettingsProvider>
   );
 }

@@ -271,6 +271,15 @@ try {
   const rep = await page.evaluate(() => navigator.clipboard.readText().catch(() => '')) || await page.locator('#report-text').inputValue();
   console.log('--- acceptance report\n' + rep);
   ok(/實機驗收報告/.test(rep) && /✅ 通過 用 Safari 開啟網址/.test(rep) && /說明：測試說明/.test(rep) && /AI 人體辨識：\d+ ms/.test(rep), 'acceptance: report text generated');
+
+  // 一次新增多件：同一件 T-shirt（重複，應略過）＋一張新照片
+  await page.goto(BASE + '#/wardrobe/batch');
+  await page.waitForSelector('input[type=file][multiple]');
+  await page.locator('input[type=file][multiple]').setInputFiles([path.join(PHOTOS, 'pollo-collared-tshirt-front.png'), path.join(PHOTOS, 'photo-01.jpg')]);
+  await page.waitForSelector('a.btn-primary:has-text("回到衣櫥")', { timeout: 180000 });
+  const batch = await page.locator('.batch-list').innerText();
+  console.log('  batch:', batch.replace(/\n+/g, ' | '));
+  ok(/已經在衣櫥裡/.test(batch) && (await page.locator('.batch-row.added').count()) === 1, 'batch add: duplicate skipped, new photo added');
 } catch (e) {
   ok(false, `exception: ${e.message.split('\n')[0]}`);
   console.log('  url:', page.url());

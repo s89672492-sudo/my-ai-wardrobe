@@ -178,6 +178,9 @@ export function GarmentEditor({ id }: { id?: string }) {
             <Icon name="image" size={34} /><b>從相簿選擇</b><span>支援 JPEG、PNG、HEIC</span>
             <input type="file" accept="image/*" hidden onChange={(e) => { void onFile(e.target.files?.[0]); e.target.value = ''; }} />
           </label>
+          <a className="pick-btn" href="#/wardrobe/batch">
+            <Icon name="plus" size={34} /><b>一次新增多件</b><span>選多張照片，自動去背、判斷種類</span>
+          </a>
           <ul className="tips">
             <li>背景越單純，去背越準確</li>
             <li>衣服攤平、整件入鏡，光線充足</li>

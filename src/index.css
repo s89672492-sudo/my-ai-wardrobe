@@ -503,3 +503,14 @@ nav[aria-label="主要導覽"] { view-transition-name: bottom-nav; }
 .stage-busy { color: #2e2a4f; }
 .ai-suggest b { color: var(--ink); }
 .small-note .spinner { width: 12px; height: 12px; margin-right: 4px; }
+
+/* 一次新增多件 */
+a.pick-btn { text-decoration: none; color: inherit; }
+.batch-list { list-style: none; padding: 4px 12px; margin-top: 12px; }
+.batch-row + .batch-row { border-top: 2px dashed var(--line); }
+.batch-row > a, .batch-row > div { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 6px 0; text-decoration: none; color: inherit; }
+.batch-row span { flex: 1; display: flex; flex-direction: column; font-size: 15px; min-width: 0; }
+.batch-row small { color: var(--muted); font-size: 12px; }
+.batch-thumb { flex: none; width: 44px; height: 58px; border-radius: 10px; overflow: hidden; background: var(--surface); border: 2px solid var(--line); }
+.batch-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.batch-err { color: var(--err); }

@@ -3,11 +3,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { flushSync } from 'react-dom';
 
 export type Route =
-  | { name: 'home' } | { name: 'wardrobe' } | { name: 'garment-new' }
+  | { name: 'home' } | { name: 'wardrobe' } | { name: 'garment-new' } | { name: 'garment-batch' }
   | { name: 'garment'; id: string } | { name: 'garment-edit'; id: string }
   | { name: 'tryon' } | { name: 'person-new' } | { name: 'person'; id: string } | { name: 'studio'; personId: string; garmentId?: string; outfitId?: string; garmentIds?: string[] } | { name: 'outfits' } | { name: 'settings' } | { name: 'diagnostics' } | { name: 'data' } | { name: 'acceptance' };
 
-export type Path = '/' | '/wardrobe' | '/wardrobe/new' | `/wardrobe/item/${string}` | '/tryon' | '/tryon/person/new' | `/tryon/person/${string}` | `/tryon/studio/${string}` | '/outfits' | '/settings' | '/settings/diagnostics' | '/settings/data' | '/settings/acceptance';
+export type Path = '/' | '/wardrobe' | '/wardrobe/new' | '/wardrobe/batch' | `/wardrobe/item/${string}` | '/tryon' | '/tryon/person/new' | `/tryon/person/${string}` | `/tryon/studio/${string}` | '/outfits' | '/settings' | '/settings/diagnostics' | '/settings/data' | '/settings/acceptance';
 
 function parse(hash = location.hash): Route {
   const h = decodeURIComponent(hash.replace(/^#/, '')).split('?')[0] || '/';
@@ -25,6 +25,7 @@ function parse(hash = location.hash): Route {
   switch (h) {
     case '/wardrobe': return { name: 'wardrobe' };
     case '/wardrobe/new': return { name: 'garment-new' };
+    case '/wardrobe/batch': return { name: 'garment-batch' };
     case '/tryon': return { name: 'tryon' };
     case '/outfits': return { name: 'outfits' };
     case '/settings': return { name: 'settings' };

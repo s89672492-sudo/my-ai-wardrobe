@@ -4,7 +4,7 @@ import s from './BottomNav.module.css';
 
 const TABS: { to: Path; label: string; icon: IconName; match: Route['name'][] }[] = [
   { to: '/', label: '首頁', icon: 'home', match: ['home'] },
-  { to: '/wardrobe', label: '我的衣櫥', icon: 'hanger', match: ['wardrobe', 'garment', 'garment-new', 'garment-edit'] },
+  { to: '/wardrobe', label: '我的衣櫥', icon: 'hanger', match: ['wardrobe', 'garment', 'garment-new', 'garment-edit', 'garment-batch'] },
   { to: '/tryon', label: 'AI 試穿', icon: 'sparkle', match: ['tryon', 'person', 'person-new', 'studio'] },
   { to: '/outfits', label: '穿搭收藏', icon: 'heart', match: ['outfits'] },
   { to: '/settings', label: '個人設定', icon: 'user', match: ['settings', 'diagnostics', 'data', 'acceptance'] },
