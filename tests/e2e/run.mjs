@@ -274,7 +274,7 @@ try {
 
   // 一次新增多件：同一件 T-shirt（重複，應略過）＋一張新照片
   await page.goto(BASE + '#/wardrobe/batch');
-  await page.waitForSelector('input[type=file][multiple]');
+  await page.waitForSelector('input[type=file][multiple]', { state: 'attached' });
   await page.locator('input[type=file][multiple]').setInputFiles([path.join(PHOTOS, 'pollo-collared-tshirt-front.png'), path.join(PHOTOS, 'photo-01.jpg')]);
   await page.waitForSelector('a.btn-primary:has-text("回到衣櫥")', { timeout: 180000 });
   const batch = await page.locator('.batch-list').innerText();
