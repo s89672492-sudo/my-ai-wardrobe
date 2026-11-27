@@ -2,7 +2,8 @@ import type { Plugin } from 'vite';
 
 /**
  * 正式版加入 Content-Security-Policy：
- * connect-src 'self' 讓頁面在技術上無法把資料送到其他網域（隱私保證）。
+ * connect-src 只允許本站與 Google Gemini（使用者自己設定金鑰、按下「雲端 AI 試穿」並確認後才會連線），
+ * 其他網域在技術上都無法連線（隱私保證）。
  * 'unsafe-eval' / 'wasm-unsafe-eval'：部分瀏覽器（Safari）會把頁面政策套用到 AI Worker，
  * 而 LiteRT.js 需要載入 wasm glue 與編譯 WebAssembly。
  */
@@ -11,7 +12,7 @@ export const CSP = [
   "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' blob: data:",
-  "connect-src 'self'",
+  "connect-src 'self' https://generativelanguage.googleapis.com",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "font-src 'self'",

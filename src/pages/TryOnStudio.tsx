@@ -9,6 +9,8 @@ import { getOutfit, saveOutfit } from '../lib/outfits';
 import { getPerson } from '../lib/persons';
 import { href } from '../lib/router';
 import { saveTryOn } from '../lib/tryons';
+import { CloudTryOn } from '../components/CloudTryOn';
+import { CATEGORIES } from '../lib/types';
 import type { Garment, PersonPhoto, TryOnLayerRecord } from '../lib/types';
 import { useImageUrl } from '../lib/useImageUrl';
 import { NO_ADJUST, type Adjust } from '../tryon/bodyTargets';
@@ -405,6 +407,12 @@ export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { per
           <p className="muted center">本機合成 {Math.round(result.ms)} ms · {layers.length} 件</p>
         </>
       )}
+      <CloudTryOn
+        photo={photo}
+        garments={slots.filter((s) => !hidden.has(s)).map((s) => ({ image: picked[s]!.image, label: `${CATEGORIES.find((c) => c.id === picked[s]!.garment.category)?.label ?? ''} ${picked[s]!.garment.name}`.trim() }))}
+        onSave={async (c) => { if (!person) return; await saveTryOn(person.id, records(), c, options); flash('已把雲端 AI 結果存到試穿紀錄'); }}
+        onShare={async (b) => { await saveFile(new File([b], `ai-tryon-cloud-${Date.now()}.${b.type.includes('png') ? 'png' : 'jpg'}`, { type: b.type })); }}
+      />
       <p className="disclaimer">說明：試穿圖是把衣服照片依身體關鍵點變形後合成的 2D 預覽（電腦視覺 + 圖像合成），不是生成式 AI。「光影」會借用照片中原本的明暗與皺褶；擦掉舊衣服後補上的是推估的背景與膚色，不是真實照到的身體。不會重建新衣服本身的布料皺褶與實際合身度，僅供搭配參考。</p>
     </div>
   );

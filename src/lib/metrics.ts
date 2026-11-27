@@ -2,7 +2,7 @@
  * 本機效能紀錄：記下最近幾次 AI 去背、人體辨識、試穿合成在「這支手機」上花的時間，
  * 供「實機驗收」頁顯示真實數據。只存數字（不含照片），只存在這支手機的瀏覽器。
  */
-export type MetricName = 'cutout' | 'analyze' | 'compose' | 'composeDraft';
+export type MetricName = 'cutout' | 'analyze' | 'compose' | 'composeDraft' | 'cloud';
 export interface MetricEntry { ms: number; at: number; detail?: string }
 const KEY = 'wardrobe-metrics-v1';
 const MAX = 20;

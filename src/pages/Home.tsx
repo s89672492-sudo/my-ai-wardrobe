@@ -129,7 +129,7 @@ export function Home() {
         </section>
       )}
 
-      <p className="privacy-note"><Icon name="shield" size={16} /> 所有照片與資料只儲存在這支手機，不使用雲端。</p>
+      <p className="privacy-note"><Icon name="shield" size={16} /> 所有照片與資料只儲存在這支手機；只有你主動使用「雲端 AI 試穿」時才會上傳那一次的照片。</p>
     </div>
   );
 }

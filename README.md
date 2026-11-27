@@ -17,11 +17,20 @@
 
 > 試穿是「圖像變形與合成」，不是生成式 AI，不會重建布料皺褶、光影或被遮住的部分。
 
+## 雲端 AI 試穿（選用，Google Gemini）
+
+在設定頁貼上**自己的** Gemini API 金鑰後，試穿頁會出現「雲端 AI 試穿」：用 Gemini 圖片模型（預設 `gemini-2.5-flash-image`）重新生成穿上衣服的照片。
+
+- 只有按下按鈕並確認後，才會把那張全身照與衣服照傳到 Google；手機直接呼叫 Google，不經過其他伺服器。
+- 金鑰只存在手機的 localStorage，不進 IndexedDB／備份檔、程式碼或 GitHub。
+- 費用由使用者自己的 Google 帳戶支付（約每張 US$0.04）；建議在 Google Cloud 設定預算上限，並把金鑰限制在本網站與 Generative Language API。
+- CSP 只多允許 `https://generativelanguage.googleapis.com` 一個網域。
+
 ## 隱私
 
 | 保證 | 實作方式 |
 |---|---|
-| 照片不離開手機 | 正式版加入 CSP `connect-src 'self'`，頁面在技術上無法連線到其他網域 |
+| 照片不離開手機（雲端 AI 試穿除外，需自行設定並確認） | 正式版 CSP 只允許本站與 Google Gemini，頁面在技術上無法連線到其他網域 |
 | 不使用雲端 AI | AI 模型在瀏覽器 Web Worker 以 LiteRT.js 執行（WebGPU 或 WASM CPU） |
 | 不提交私人照片 | `.gitignore` 排除圖片；CI 的 `npm run check-repo` 發現圖片或權重就失敗 |
 | 部署內容無私人圖片 | `npm run verify-dist` 檢查 dist 中除 App 圖示外沒有任何圖片 |

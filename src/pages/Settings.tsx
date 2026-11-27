@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Badge, ListLink, PageHeader } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { CoupleEditor } from '../components/CoupleEditor';
+import { GeminiSettings } from '../components/GeminiSettings';
 import { AIClient } from '../ai/client';
 import { CLASSIFIER_MODEL_URL, CUTOUT_MODEL_URL, MODEL_URLS, WASM_PATH, modelsCached } from '../ai/assets';
 import { formatMB, getStorageInfo, useOnline, type StorageInfo } from '../lib/platform';
@@ -56,6 +57,9 @@ export function Settings() {
       <h3 className="section-title">我們</h3>
       <CoupleEditor />
 
+      <h3 className="section-title">雲端 AI 試穿（Gemini，選用）</h3>
+      <GeminiSettings />
+
       <h3 className="section-title">外觀</h3>
       <div className="segmented three" role="radiogroup" aria-label="外觀">
         {([['auto', '跟隨系統'], ['light', '淺色'], ['dark', '深色']] as const).map(([k, l]) => (
@@ -103,7 +107,7 @@ export function Settings() {
 
       <h3 className="section-title">關於</h3>
       <div className="card about">
-        <p><Icon name="shield" size={16} /> 照片與資料只存在這支手機的瀏覽器資料庫，不上傳任何伺服器，不使用雲端 AI。</p>
+        <p><Icon name="shield" size={16} /> 照片與資料只存在這支手機的瀏覽器資料庫。只有在你設定 Gemini 金鑰並按下「雲端 AI 試穿」時，那一次的照片才會傳到 Google。</p>
         <p className="muted">版本 {__APP_VERSION__}（{__BUILD_ID__}）· 開放原始碼授權見 GitHub 上的 THIRD_PARTY_NOTICES.md</p>
       </div>
     </div>

@@ -40,7 +40,12 @@ const html = await readFile(path.join(dist, 'index.html'), 'utf8');
 const refs = [...html.matchAll(/(?:src|href)="([^"]+)"/g)].map((m) => m[1]);
 check(refs.length > 0 && refs.every((u) => u.startsWith(base)), `index.html 的 ${refs.length} 個資源網址都以 ${base} 開頭`);
 for (const u of refs) if (!byRel.has(u.slice(base.length))) bad(`index.html 引用的檔案不存在：${u}`);
-check(html.includes('http-equiv="Content-Security-Policy"') && html.includes("connect-src 'self'"), "CSP：connect-src 'self'（頁面無法把資料送到其他網域）");
+{
+  // 只允許本站 + Google Gemini（使用者自選的雲端 AI 試穿）；不得出現其他網域或萬用字元
+  const m = html.match(/connect-src ([^;"]+)/);
+  const allowed = (m?.[1] ?? '').trim().split(/\s+/);
+  check(allowed.length > 0 && allowed.every((a) => a === "'self'" || a === 'https://generativelanguage.googleapis.com'), `CSP：connect-src 只允許 ${allowed.join(' ')}`);
+}
 
 console.log('\n[2] PWA manifest 與圖示');
 const mf = JSON.parse(await readFile(path.join(dist, 'manifest.webmanifest'), 'utf8'));
@@ -103,7 +108,8 @@ console.log('\n[6] 隱私');
 const imgs = files.filter((f) => /\.(jpe?g|png|webp|heic|heif|gif|avif|bmp|tiff?)$/i.test(f.rel) && !f.rel.startsWith('icons/'));
 check(!imgs.length, `除了 App 圖示，沒有任何圖片檔${imgs.length ? `：${imgs.map((f) => f.rel).join(', ')}` : ''}`);
 check(!files.some((f) => f.rel.endsWith('.map')), '沒有 source map');
-const CLOUD_AI = ['api.openai.com', 'generativelanguage.googleapis.com', 'aiplatform.googleapis.com', 'api.replicate.com', 'api-inference.huggingface.co', 'router.huggingface.co', 'api.anthropic.com', 'api.stability.ai', 'api.fal.ai', 'firebaseio.com', 'supabase.co'];
+// generativelanguage.googleapis.com 不在此列：使用者自己的 Gemini 金鑰、主動確認後才會連線（src/lib/cloud-tryon.ts）
+const CLOUD_AI = ['api.openai.com', 'aiplatform.googleapis.com', 'api.replicate.com', 'api-inference.huggingface.co', 'router.huggingface.co', 'api.anthropic.com', 'api.stability.ai', 'api.fal.ai', 'firebaseio.com', 'supabase.co'];
 const code = (await Promise.all(files.filter((f) => /\.(js|html|json|webmanifest)$/.test(f.rel)).map((f) => readFile(path.join(dist, f.rel), 'utf8')))).join('\n');
 const hits = CLOUD_AI.filter((h) => code.includes(h));
 check(!hits.length, `程式碼中沒有雲端 AI 或雲端資料庫網址${hits.length ? `：${hits.join(', ')}` : ''}`);

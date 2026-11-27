@@ -133,6 +133,37 @@ try {
   ok(lastCompose && !lastCompose.includes('主執行緒'), `try-on composed in background worker (${lastCompose})`);
   const eraseToggle = page.locator('label.option:has-text("擦掉露出來的舊衣服") input');
   ok((await eraseToggle.count()) === 1 && (await eraseToggle.isChecked()) && !(await eraseToggle.isDisabled()), 'old-clothes eraser available and on by default');
+
+  // 雲端 AI 試穿（Gemini）：不呼叫真的 Google，用模擬回應檢查請求內容與畫面
+  const studioUrl = page.url();
+  ok((await page.locator('.cloud-tryon').count()) === 0, 'cloud try-on hidden when no Gemini key is set');
+  const FAKE_KEY = 'AIza' + 'TESTKEY'.repeat(5);
+  let geminiReq = null;
+  await page.route('https://generativelanguage.googleapis.com/**', async (route) => {
+    const r = route.request();
+    if (r.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'POST' } });
+    geminiReq = { url: r.url(), key: r.headers()['x-goog-api-key'], body: r.postDataJSON() };
+    const png = 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP8z8DAwMDAxMDAwMDAAAANHQEDK+mmyAAAAABJRU5ErkJggg==';
+    await route.fulfill({ status: 200, headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*' }, body: JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ inlineData: { mimeType: 'image/png', data: png } }] } }] }) });
+  });
+  await page.goto(BASE + '#/settings');
+  await page.fill('input[aria-label="Gemini API 金鑰"]', FAKE_KEY);
+  await page.click('button:has-text("儲存金鑰")');
+  ok(await page.evaluate(() => (localStorage.getItem('wardrobe-gemini-key') || '').startsWith('AIza')), 'Gemini key stored on this device only');
+  await page.goto(studioUrl);
+  await page.waitForSelector('.cloud-tryon', { timeout: 30000 });
+  await page.click('.cloud-tryon button:has-text("雲端 AI 試穿")');
+  await page.waitForSelector('img[alt="雲端 AI 試穿結果"]', { timeout: 30000 }).catch(() => {});
+  const parts = geminiReq?.body?.contents?.[0]?.parts ?? [];
+  ok(!!geminiReq && geminiReq.key === FAKE_KEY && /gemini-2\.5-flash-image:generateContent/.test(geminiReq.url) && parts.filter((x) => x.inline_data).length >= 2 && !geminiReq.url.includes(FAKE_KEY),
+    `cloud try-on request: key in header (not URL), person + garment images (${parts.filter((x) => x.inline_data).length} images)`);
+  ok(await page.locator('img[alt="雲端 AI 試穿結果"]').isVisible().catch(() => false), 'cloud try-on result shown');
+  await page.goto(BASE + '#/settings');
+  await page.click('.gemini button:has-text("刪除")');
+  ok(await page.evaluate(() => !localStorage.getItem('wardrobe-gemini-key')), 'Gemini key can be removed');
+  await page.unroute('https://generativelanguage.googleapis.com/**');
+  await page.goto(studioUrl);
+  await page.waitForSelector('text=本機合成', { timeout: 60000 });
   await page.screenshot({ path: path.join(OUT, `${tag}-tryon.png`), fullPage: true });
   await page.click('button[role=tab]:has-text("手動調整")');
   await page.locator('.slider input').first().fill('1.15');
