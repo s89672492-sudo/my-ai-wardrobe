@@ -153,11 +153,11 @@ try {
   await page.goto(studioUrl);
   await page.waitForSelector('.cloud-tryon', { timeout: 30000 });
   await page.click('.cloud-tryon button:has-text("雲端 AI 試穿")');
-  await page.waitForSelector('img[alt="雲端 AI 試穿結果"]', { timeout: 30000 }).catch(() => {});
+  await page.waitForSelector('img.cloud-stage-img', { timeout: 30000 }).catch(() => {});
   const parts = geminiReq?.body?.contents?.[0]?.parts ?? [];
   ok(!!geminiReq && geminiReq.key === FAKE_KEY && /gemini-2\.5-flash-image:generateContent/.test(geminiReq.url) && parts.filter((x) => x.inline_data).length >= 2 && !geminiReq.url.includes(FAKE_KEY),
     `cloud try-on request: key in header (not URL), person + garment images (${parts.filter((x) => x.inline_data).length} images)`);
-  ok(await page.locator('img[alt="雲端 AI 試穿結果"]').isVisible().catch(() => false), 'cloud try-on result shown');
+  ok(await page.locator('img.cloud-stage-img').isVisible().catch(() => false) && (await page.locator('.cloud-switch').count()) === 1, 'cloud try-on result shown in the main preview');
   await page.goto(BASE + '#/settings');
   await page.click('.gemini button:has-text("刪除")');
   ok(await page.evaluate(() => !localStorage.getItem('wardrobe-gemini-key')), 'Gemini key can be removed');

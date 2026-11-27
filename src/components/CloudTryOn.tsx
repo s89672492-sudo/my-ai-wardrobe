@@ -7,11 +7,13 @@ import { Icon } from './Icon';
  * 試穿頁的「雲端 AI 試穿」：沒設定金鑰時不顯示。按下後先確認（照片會傳到 Google），
  * 結果可存到試穿紀錄或分享。
  */
-export function CloudTryOn({ photo, garments, onSave, onShare }: {
+export function CloudTryOn({ photo, garments, onSave, onShare, onResult }: {
   photo: HTMLCanvasElement | null;
   garments: CloudGarment[];
   onSave: (c: HTMLCanvasElement) => Promise<void>;
   onShare: (b: Blob) => Promise<void>;
+  /** 產生結果時通知試穿頁，把結果直接顯示在上方的試穿圖 */
+  onResult: (url: string | null) => void;
 }) {
   const [hasKey] = useState(() => !!getGeminiKey());
   const [busy, setBusy] = useState(false);
@@ -23,6 +25,7 @@ export function CloudTryOn({ photo, garments, onSave, onShare }: {
   const abort = useRef<AbortController | null>(null);
   useEffect(() => () => { abort.current?.abort(); }, []);
   useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
+  useEffect(() => () => onResult(null), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!hasKey || !photo || !garments.length) return null;
 
@@ -34,7 +37,10 @@ export function CloudTryOn({ photo, garments, onSave, onShare }: {
     try {
       const b = await cloudTryOn(photo!, garments, { extra: extra.trim(), signal: abort.current.signal });
       setBlob(b);
-      setUrl(URL.createObjectURL(b));
+      const u = URL.createObjectURL(b);
+      setUrl(u);
+      onResult(u);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       recordMetric('cloud', performance.now() - t0, `${garments.length} 件`);
     } catch (e) { setErr((e as Error).message); } finally { setBusy(false); abort.current = null; }
   }
@@ -59,7 +65,7 @@ export function CloudTryOn({ photo, garments, onSave, onShare }: {
       {err && <div className="alert alert-err" role="alert">{err}</div>}
       {url && (
         <div className="cloud-result">
-          <img src={url} alt="雲端 AI 試穿結果" />
+          <p className="muted small-note">✓ 結果已顯示在上方的試穿圖（可切換「雲端 AI／本機」）</p>
           <div className="row-2">
             <button className="btn btn-primary" disabled={saved} onClick={() => void save()}>{saved ? '已儲存' : '存到試穿紀錄'}</button>
             <button className="btn" onClick={() => blob && void onShare(blob)}><Icon name="share" size={18} /> 分享圖片</button>

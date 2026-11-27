@@ -70,6 +70,8 @@ export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { per
   const [active, setActive] = useState<Slot | null>(null);
   const [filter, setFilter] = useState<Slot | 'all'>('all');
   const [mode, setMode] = useState<Mode>('result');
+  const [cloudUrl, setCloudUrl] = useState<string | null>(null);
+  const [showCloud, setShowCloud] = useState(true);
   const [split, setSplit] = useState(0.5);
   const [showAnchors, setShowAnchors] = useState(false);
   const [result, setResult] = useState<{ canvas: HTMLCanvasElement; notes: string[]; ms: number } | null>(null);
@@ -303,8 +305,15 @@ export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { per
         <div ref={wrap} className="crop-wrap" style={{ position: 'relative' }}>
           <div className="cutout-stage" style={{ width: photo.width * scale, height: photo.height * scale }}>
             <canvas ref={view} style={{ width: '100%', height: '100%', touchAction: mode === 'result' ? 'auto' : 'none' }} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} />
+            {cloudUrl && showCloud && mode === 'result' && <img className="cloud-stage-img" src={cloudUrl} alt="雲端 AI 試穿結果" decoding="async" />}
             {busy && <div className="stage-busy"><span className="spinner" />{busy}</div>}
           </div>
+        </div>
+      )}
+      {cloudUrl && mode === 'result' && (
+        <div className="segmented small cloud-switch" role="tablist" aria-label="顯示哪個結果">
+          <button role="tab" aria-selected={showCloud} className={showCloud ? 'on' : ''} onClick={() => setShowCloud(true)}>雲端 AI</button>
+          <button role="tab" aria-selected={!showCloud} className={!showCloud ? 'on' : ''} onClick={() => setShowCloud(false)}>本機</button>
         </div>
       )}
       {toast && <div className="inline-toast" role="status">{toast}</div>}
@@ -411,6 +420,7 @@ export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { per
         photo={photo}
         garments={slots.filter((s) => !hidden.has(s)).map((s) => ({ image: picked[s]!.image, label: `${CATEGORIES.find((c) => c.id === picked[s]!.garment.category)?.label ?? ''} ${picked[s]!.garment.name}`.trim() }))}
         onSave={async (c) => { if (!person) return; await saveTryOn(person.id, records(), c, options); flash('已把雲端 AI 結果存到試穿紀錄'); }}
+        onResult={(u) => { setCloudUrl(u); setShowCloud(true); setMode('result'); }}
         onShare={async (b) => { await saveFile(new File([b], `ai-tryon-cloud-${Date.now()}.${b.type.includes('png') ? 'png' : 'jpg'}`, { type: b.type })); }}
       />
       <p className="disclaimer">說明：試穿圖是把衣服照片依身體關鍵點變形後合成的 2D 預覽（電腦視覺 + 圖像合成），不是生成式 AI。「光影」會借用照片中原本的明暗與皺褶；擦掉舊衣服後補上的是推估的背景與膚色，不是真實照到的身體。不會重建新衣服本身的布料皺褶與實際合身度，僅供搭配參考。</p>
