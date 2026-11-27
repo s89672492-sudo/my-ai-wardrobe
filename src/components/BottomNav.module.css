@@ -9,7 +9,7 @@
 }
 .tab {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-  min-height: 56px; color: var(--muted); text-decoration: none; font-size: 10.5px; font-weight: 500; letter-spacing: 0.02em;
+  min-height: 56px; color: var(--muted); text-decoration: none; font-size: 12px; font-weight: 600; letter-spacing: 0.02em;
   -webkit-tap-highlight-color: transparent;
 }
 .tab svg { stroke-width: 1.5; }

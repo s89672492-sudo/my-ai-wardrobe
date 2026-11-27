@@ -1,6 +1,6 @@
 :root {
   /* 精品服飾店：白底、近黑字、灰階，重點色只有酒紅 */
-  --bg: #ffffff; --dot: transparent; --fg: #161514; --card: #ffffff; --card-2: #f3f1ee; --muted: #6b6661; --line: #e7e3de;
+  --bg: #ffffff; --dot: transparent; --fg: #161514; --card: #ffffff; --card-2: #f3f1ee; --muted: #57524d; --line: #e7e3de;
   --surface: #f7f5f2; --ink: #161514; --paper: #ffffff;
   --edge: #e7e3de; --shadow-c: transparent; --on-ink: #ffffff;
   --accent: #7b1e2e; --accent-bg: #7b1e2e; --accent-soft: #f6ecee; --on-accent: #ffffff;
@@ -15,7 +15,7 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #121110; --fg: #ece7e0; --card: #1b1a18; --card-2: #262421; --muted: #a39d95; --line: #312e2a;
+    --bg: #121110; --fg: #ece7e0; --card: #1b1a18; --card-2: #262421; --muted: #bdb7ae; --line: #312e2a;
     --surface: #1f1d1b; --ink: #ece7e0; --paper: #1b1a18; --edge: #312e2a; --on-ink: #121110;
     --accent: #d76a7e; --accent-bg: #a8455a; --accent-soft: #2a1b1e; --on-accent: #ffffff;
     --ok: #7cc79f; --warn: #e0b46a; --err: #f08a92;
@@ -24,7 +24,7 @@
   }
 }
 :root[data-theme="dark"] {
-  --bg: #121110; --fg: #ece7e0; --card: #1b1a18; --card-2: #262421; --muted: #a39d95; --line: #312e2a;
+  --bg: #121110; --fg: #ece7e0; --card: #1b1a18; --card-2: #262421; --muted: #bdb7ae; --line: #312e2a;
   --surface: #1f1d1b; --ink: #ece7e0; --paper: #1b1a18; --edge: #312e2a; --on-ink: #121110;
   --accent: #d76a7e; --accent-bg: #a8455a; --accent-soft: #2a1b1e; --on-accent: #ffffff;
   --ok: #7cc79f; --warn: #e0b46a; --err: #f08a92;
@@ -639,3 +639,19 @@ h1, h2, .page-header h1, .empty h2, .today-title { font-family: var(--serif); fo
 .more-info p { margin: 8px 0 0; line-height: 1.6; }
 .card-title { font-size: 19px; margin: 0 0 10px; }
 .backup-nudge, .alert-warn.backup-nudge { background: var(--surface); color: var(--ink); }
+
+/* 易讀性：字級加大、字重加粗、灰字不要太淡 */
+body { font-size: 16px; -webkit-font-smoothing: antialiased; }
+h1, h2, .page-header h1, .empty h2, .today-title, .card-title, .greet h1, .stat strong { font-weight: 700; }
+.muted, .small-note, .more-info, .disclaimer { color: var(--muted); }
+.muted { font-size: 15px; }
+.small-note { font-size: 14px; }
+.section-title { font-size: 14px; color: var(--ink); opacity: .75; }
+.garment-name { font-size: 15px; font-weight: 600; }
+.garment-meta { font-size: 13px; }
+.chip { font-size: 15px; font-weight: 500; }
+.segmented button, .owner-tab { font-size: 16px; }
+.shortcut small, .greet-names { font-size: 14px; }
+.stat span { font-size: 13px; }
+.page-header p, .greet-date { font-size: 14px; }
+.more-info { font-size: 14px; }
