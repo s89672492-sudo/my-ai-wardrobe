@@ -282,7 +282,7 @@ try {
   await page.reload();
   await page.waitForSelector('[aria-label="外觀"]');
   const dark = await page.evaluate(() => ({ attr: document.documentElement.dataset.theme, bg: getComputedStyle(document.body).backgroundColor }));
-  ok(dark.attr === 'dark' && dark.bg === 'rgb(23, 22, 42)', `dark mode applied and kept after reload (${dark.bg})`);
+  ok(dark.attr === 'dark' && dark.bg === 'rgb(18, 17, 16)', `dark mode applied and kept after reload (${dark.bg})`);
   await page.click('[aria-label="外觀"] button:has-text("跟隨系統")');
 
   // 8. 資料與隱私：CSP、用量、重複檢查、匯出
