@@ -122,7 +122,6 @@ try {
   const sug = await page.locator('.ai-suggest').innerText().catch(() => '');
   ok(/T-shirt/.test(sug), `AI category suggestion for the T-shirt photo (${sug.replace(/\n/g, ' ')})`);
   await page.click('.chip-grid .chip >> text=T-shirt');
-  await page.click('.owner-tab:has-text("她")');
   await page.click('.sticky-actions >> text=儲存');
   await page.waitForSelector('.specs');
   await page.click('button:has-text("試穿這件")');
@@ -252,28 +251,21 @@ try {
   await page.waitForSelector('.today', { timeout: 10000 }).catch(() => {});
   ok(await page.locator('.today').count() === 1, 'home shows today pick');
 
-  // 情侶衣櫥：暱稱、自訂頭像（只存本機）、依擁有者篩選
+  // 個人衣櫥：名字、自訂頭像（只存本機），不再有她／他分類
   await page.goto(BASE + '#/settings');
-  await page.fill('input[aria-label="她的暱稱"]', '一二');
-  await page.fill('input[aria-label="他的暱稱"]', '布布');
-  await page.locator('.couple-person').first().locator('input[type=file]').setInputFiles(path.join(PHOTOS, 'photo-02.jpg'));
+  await page.fill('input[aria-label="我的名字"]', '一二');
+  await page.locator('.profile-edit input[type=file]').setInputFiles(path.join(PHOTOS, 'photo-02.jpg'));
   await page.waitForSelector('.crop-stage');
   await page.click('button:has-text("使用這個頭像")');
-  await page.waitForSelector('.couple-person .avatar img', { timeout: 15000 });
-  ok(await page.locator('.couple-person').first().locator('.avatar img').count() === 1, 'couple: custom avatar saved locally');
+  await page.waitForSelector('.profile-edit .avatar img', { timeout: 15000 });
+  ok(true, 'profile: custom avatar saved locally');
   await page.goto(BASE + '#/');
   await page.reload();
-  await page.waitForFunction(() => /一二[\s\S]*布布/.test(document.querySelector('.greet')?.innerText ?? ''), null, { timeout: 10000 }).catch(() => {});
-  ok(/一二[\s\S]*布布/.test(await page.locator('.greet').innerText()), 'couple: names shown on home');
+  await page.waitForFunction(() => /一二/.test(document.querySelector('.greet')?.innerText ?? ''), null, { timeout: 10000 }).catch(() => {});
+  ok(/一二/.test(await page.locator('.greet').innerText()) && !/與/.test(await page.locator('.greet-names').innerText()), 'profile: my name shown on home');
   await page.goto(BASE + '#/wardrobe');
-  await page.click('.owner-tab:has-text("一二")');
-  const herItems = await page.locator('.garment-card').count();
-  await page.click('.owner-tab:has-text("布布")');
-  const hisItems = await page.locator('.garment-card').count();
-  await page.click('.owner-tab:has-text("全部")');
-  const allItems = await page.locator('.garment-card').count();
-  ok(herItems === allItems && hisItems === allItems - 1, `couple: owner filter (all ${allItems}, her ${herItems}, his ${hisItems})`);
-  await page.screenshot({ path: path.join(OUT, `${tag}-couple-wardrobe.png`) });
+  await page.waitForSelector('.garment-card');
+  ok((await page.locator('.owner-tab').count()) === 0, 'single-person wardrobe: no her/him tabs');
 
   // 深色模式：手動切換、重新整理後保留
   await page.goto(BASE + '#/settings');
@@ -327,14 +319,84 @@ try {
   console.log('--- acceptance report\n' + rep);
   ok(/實機驗收報告/.test(rep) && /✅ 通過 用 Safari 開啟網址/.test(rep) && /說明：測試說明/.test(rep) && /AI 人體辨識：\d+ ms/.test(rep), 'acceptance: report text generated');
 
-  // 一次新增多件：同一件 T-shirt（重複，應略過）＋一張新照片
+  // 一次新增多件（免費）：同一件 T-shirt（重複，應略過）＋一張新照片
   await page.goto(BASE + '#/wardrobe/batch');
   await page.waitForSelector('input[type=file][multiple]', { state: 'attached' });
+  ok(await page.locator('.process-opts input[type=radio]').count() === 2, 'batch: only free options without a Gemini key');
   await page.locator('input[type=file][multiple]').setInputFiles([path.join(PHOTOS, 'pollo-collared-tshirt-front.png'), path.join(PHOTOS, 'photo-01.jpg')]);
-  await page.waitForSelector('a.btn-primary:has-text("回到衣櫥")', { timeout: 180000 });
+  ok(/NT\$0（免費）/.test(await page.locator('.batch-cost').innerText()), 'batch: free cost estimate shown before start');
+  await page.click('button:has-text("開始處理")');
+  await page.waitForSelector('button.btn-primary:has-text("完成，回到衣櫥")', { timeout: 180000 });
   const batch = await page.locator('.batch-list').innerText();
   console.log('  batch:', batch.replace(/\n+/g, ' | '));
   ok(/已經在衣櫥裡/.test(batch) && (await page.locator('.batch-row.added').count()) === 1, 'batch add: duplicate skipped, new photo added');
+  await page.click('button:has-text("完成，回到衣櫥")');
+  await page.waitForURL(/#\/wardrobe$/);
+
+  // 付費批次（模擬 Gemini）：AI 標出範圍＋Gemini 判斷；處理到一半重新整理 → 從第 N 件繼續
+  const mock = await page.evaluate(() => {
+    const mk = (w, h, color, bg) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); x.fillStyle = bg; x.fillRect(0, 0, w, h); if (color) { x.fillStyle = color; x.fillRect(w * 0.2, h * 0.15, w * 0.6, h * 0.7); } return c.toDataURL('image/png').split(',')[1]; };
+    return { white: mk(8, 8, null, '#fff'), a: mk(500, 700, '#2e7d4f', '#ddd'), b: mk(500, 700, '#c62828', '#eee') };
+  });
+  const cloudReqs = [];
+  await page.route('https://generativelanguage.googleapis.com/**', async (route) => {
+    const r = route.request();
+    if (r.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'POST' } });
+    const body = r.postData() ?? '';
+    const kind = body.includes('segmentation mask') ? 'mask' : body.includes('responseSchema') ? 'judge' : 'other';
+    cloudReqs.push({ kind, key: r.headers()['x-goog-api-key'], url: r.url() });
+    await new Promise((res) => setTimeout(res, 1500));
+    const text = kind === 'mask'
+      ? JSON.stringify([{ box_2d: [150, 200, 850, 800], mask: 'data:image/png;base64,' + mock.white, label: 'skirt' }])
+      : JSON.stringify({ category: 'skirt', color: '綠色', seasons: ['summer'], styles: ['casual'], name: '綠色測試裙' });
+    await route.fulfill({ status: 200, headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*' }, body: JSON.stringify({ candidates: [{ content: { parts: [{ text }] } }] }) }).catch(() => {});
+  });
+  await page.goto(BASE + '#/settings');
+  await page.fill('input[aria-label="Gemini API 金鑰"]', FAKE_KEY);
+  await page.click('button:has-text("儲存金鑰")');
+  await page.goto(BASE + '#/wardrobe/batch');
+  await page.waitForSelector('input[type=file][multiple]', { state: 'attached' });
+  await page.click('.process-opts label:has-text("AI 標出範圍")');
+  ok(await page.locator('.process-opts label:has-text("Gemini 判斷") input').isChecked(), 'batch: Gemini judging is the default with a key');
+  await page.locator('input[type=file][multiple]').setInputFiles([
+    { name: 'green.png', mimeType: 'image/png', buffer: Buffer.from(mock.a, 'base64') },
+    { name: 'red.png', mimeType: 'image/png', buffer: Buffer.from(mock.b, 'base64') },
+  ]);
+  const estimate = await page.locator('.batch-cost').innerText();
+  ok(/約 NT\$0\.2/.test(estimate), `batch: paid cost estimate shown before start (${estimate})`);
+  await page.click('button:has-text("開始處理")');
+  await page.waitForSelector('.batch-row .spinner', { timeout: 30000 });
+  await page.reload();
+  await page.goto(BASE + '#/wardrobe');
+  await page.waitForSelector('.alert:has-text("沒處理完")', { timeout: 10000 }).catch(() => {});
+  ok(await page.locator('.alert:has-text("沒處理完")').count() === 1, 'wardrobe shows unfinished batch reminder after interruption');
+  await page.click('.alert:has-text("沒處理完")');
+  await page.waitForSelector('button:has-text("繼續")', { timeout: 10000 });
+  await page.click('button:has-text("繼續")');
+  await page.waitForSelector('button.btn-primary:has-text("完成，回到衣櫥")', { timeout: 120000 });
+  const cloudAdded = await page.locator('.batch-row.added').count();
+  ok(cloudAdded === 2 && /Gemini 判斷/.test(await page.locator('.batch-list').innerText()), `paid batch resumed and finished (${cloudAdded} added)`);
+  ok(cloudReqs.length >= 4 && cloudReqs.every((q) => q.key === FAKE_KEY && !q.url.includes(FAKE_KEY)) && cloudReqs.some((q) => q.kind === 'mask') && cloudReqs.some((q) => q.kind === 'judge'),
+    `paid batch: mask + judge requests with key in header (${cloudReqs.length} requests)`);
+  await page.click('button:has-text("完成，回到衣櫥")');
+  await page.waitForURL(/#\/wardrobe$/);
+  await page.waitForSelector('.garment-card');
+  ok(await page.locator('.garment-name:has-text("綠色測試裙")').count() === 2, 'paid batch: no duplicate garments after resume, Gemini names saved');
+
+  // 重新處理舊衣服：選取 → 只重新判斷（Gemini）→ 直接覆蓋
+  await page.click('button:has-text("選取")');
+  await page.click('.select-card:has-text("測試長褲")');
+  await page.click('.select-bar button:has-text("重新處理 1 件")');
+  await page.waitForSelector('text=開始重新處理');
+  await page.locator('label:has-text("重新去背") input').uncheck();
+  await page.waitForTimeout(200);
+  await page.click('button:has-text("開始重新處理")');
+  await page.waitForSelector('button.btn-primary:has-text("完成，回到衣櫥")', { timeout: 60000 });
+  ok(await page.locator('.batch-row.updated').count() === 1, 'reprocess: selected garment updated');
+  await page.click('button:has-text("完成，回到衣櫥")');
+  await page.waitForSelector('.garment-card');
+  ok(await page.locator('.garment-name:has-text("綠色測試裙")').count() === 3 && await page.locator('.garment-name:has-text("測試長褲")').count() === 0, 'reprocess: judgement overwrote the old name');
+  await page.unroute('https://generativelanguage.googleapis.com/**');
 } catch (e) {
   ok(false, `exception: ${e.message.split('\n')[0]}`);
   console.log('  url:', page.url());

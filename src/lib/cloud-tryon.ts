@@ -46,6 +46,37 @@ function prompt(garments: CloudGarment[], extra: string) {
   ].filter(Boolean).join('\n');
 }
 
+/** 呼叫 Gemini generateContent（金鑰放在 header，不放網址） */
+export async function geminiCall(model: string, body: unknown, signal?: AbortSignal): Promise<GeminiResponse> {
+  const key = getGeminiKey();
+  if (!key) throw new Error('尚未設定 Gemini 金鑰，請先到「設定」貼上。');
+  if (!navigator.onLine) throw new Error('目前離線，雲端 AI 需要網路。');
+  const res = await fetch(`${GEMINI_HOST}/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+    body: JSON.stringify(body),
+    signal,
+  }).catch((e: Error) => { throw new Error(e.name === 'AbortError' ? '已取消' : `無法連線到 Google：${e.message}`); });
+  const json = await res.json().catch(() => ({})) as GeminiResponse & { error?: { message?: string } };
+  if (!res.ok) { const err = new Error(friendly(res.status, json.error?.message ?? '')) as Error & { status?: number }; err.status = res.status; throw err; }
+  if (json.promptFeedback?.blockReason) throw new Error(`Google 拒絕處理這張圖（${json.promptFeedback.blockReason}）。`);
+  return json;
+}
+type GeminiPart = { text?: string; inlineData?: { mimeType?: string; data?: string }; inline_data?: { mime_type?: string; data?: string } };
+export interface GeminiResponse { promptFeedback?: { blockReason?: string }; candidates?: { finishReason?: string; content?: { parts?: GeminiPart[] } }[] }
+export const responseText = (r: GeminiResponse) => r.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('').trim() ?? '';
+export function responseImage(r: GeminiResponse): Blob | null {
+  const img = r.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data || p.inline_data?.data);
+  const data = img?.inlineData?.data ?? img?.inline_data?.data;
+  if (!data) return null;
+  return base64ToBlob(data, img?.inlineData?.mimeType ?? img?.inline_data?.mime_type ?? 'image/png');
+}
+export function base64ToBlob(data: string, mime: string): Blob {
+  const bin = atob(data); const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
 /** 把 Google 的錯誤轉成看得懂的說明 */
 function friendly(status: number, msg: string): string {
   if (status === 400 && /API key not valid|API_KEY_INVALID/i.test(msg)) return '金鑰不正確。請到設定頁重新貼上 Gemini 金鑰（AQ. 或 AIza 開頭）。';
@@ -54,7 +85,7 @@ function friendly(status: number, msg: string): string {
   if (status === 429) return '已達 Google 的使用上限或預算上限，請稍後再試，或到 Google Cloud 查看帳單與配額。';
   if (status === 404) return '找不到這個 Gemini 模型名稱，請到設定頁把模型改回預設值。';
   if (status >= 500) return 'Google 伺服器暫時有問題，請稍後再試。';
-  return `雲端 AI 試穿失敗（${status}）：${msg.slice(0, 160)}`;
+  return `雲端 AI 失敗（${status}）：${msg.slice(0, 160)}`;
 }
 
 export async function cloudTryOn(person: Blob | HTMLCanvasElement, garments: CloudGarment[], opts: { extra?: string; signal?: AbortSignal } = {}): Promise<Blob> {

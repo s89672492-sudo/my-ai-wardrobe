@@ -39,7 +39,7 @@ export interface Garment {
   favorite: 0 | 1;
   /** 選填風格標籤（推薦用）：休閒／正式／運動 */
   styles?: ('casual' | 'formal' | 'sport')[];
-  /** 誰的衣服（情侶衣櫥）；未設定視為共用 */
+  /** 舊版情侶衣櫥的擁有者；已改為個人衣櫥，保留不使用 */
   owner?: Owner;
 }
 
@@ -108,9 +108,18 @@ export interface AppSettings {
   tryOnErase?: boolean;
   /** 外觀：跟隨系統／淺色／深色 */
   theme?: 'auto' | 'light' | 'dark';
-  /** 兩人的暱稱與自訂頭像（頭像圖片只存在這支手機） */
+  /** 舊版：兩人的暱稱與頭像（已改成個人衣櫥，保留舊資料不使用） */
   couple?: CoupleSettings;
+  /** 我的名字與頭像（頭像圖片只存在這支手機） */
+  me?: { name: string; avatarId?: string };
+  /** 新增／重新處理衣服時預設的去背方式 */
+  cutoutMethod?: CutoutMethod;
+  /** 判斷種類、顏色、季節、風格、名稱：本機（免費）或 Gemini（付費） */
+  judgeMethod?: JudgeMethod;
 }
+/** local＝手機免費；gemini-redraw＝Gemini 在白底重畫；gemini-mask＝Gemini 只標出衣服範圍 */
+export type CutoutMethod = 'local' | 'gemini-redraw' | 'gemini-mask';
+export type JudgeMethod = 'local' | 'gemini';
 export interface CoupleSettings { herName: string; himName: string; herAvatarId?: string; himAvatarId?: string }
 export const DEFAULT_COUPLE: CoupleSettings = { herName: '她', himName: '他' };
 export const DEFAULT_SETTINGS: AppSettings = { computeMode: 'auto', backend: 'auto', imageQuality: 'standard' };

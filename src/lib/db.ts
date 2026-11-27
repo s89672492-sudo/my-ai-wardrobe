@@ -4,9 +4,10 @@
  */
 import { openDB, deleteDB, type DBSchema, type IDBPDatabase } from 'idb';
 import { DEFAULT_SETTINGS, type AppSettings, type Garment, type HistoryEntry, type Outfit, type PersonPhoto, type StoredImage, type TryOnResult } from './types';
+import type { BatchJob, BatchJobItem } from './batch-types';
 
 export const DB_NAME = 'my-ai-wardrobe';
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 export interface WardrobeDB extends DBSchema {
   garments: { key: string; value: Garment; indexes: { byCategory: string; byCreatedAt: number; byFavorite: number } };
@@ -16,6 +17,9 @@ export interface WardrobeDB extends DBSchema {
   outfits: { key: string; value: Outfit; indexes: { byCreatedAt: number; byFavorite: number } };
   history: { key: string; value: HistoryEntry; indexes: { byCreatedAt: number } };
   settings: { key: string; value: AppSettings };
+  /** 批次處理（一次新增多件／重新處理）的工作與待處理清單，做完就刪除，不進備份檔 */
+  jobs: { key: string; value: BatchJob };
+  jobItems: { key: string; value: BatchJobItem; indexes: { byJob: string } };
 }
 
 let dbPromise: Promise<IDBPDatabase<WardrobeDB>> | null = null;
@@ -39,6 +43,10 @@ export function getDB() {
         o.createIndex('byFavorite', 'favorite');
         db.createObjectStore('history', { keyPath: 'id' }).createIndex('byCreatedAt', 'createdAt');
         db.createObjectStore('settings');
+      }
+      if (oldVersion < 2) {
+        db.createObjectStore('jobs', { keyPath: 'id' });
+        db.createObjectStore('jobItems', { keyPath: 'id' }).createIndex('byJob', 'jobId');
       }
     },
     blocked() {

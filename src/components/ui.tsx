@@ -15,7 +15,7 @@ export function PageHeader({ title, subtitle, back, right }: { title: string; su
   );
 }
 
-export function EmptyState({ icon, title, children, action }: { icon: IconName; mascot?: 'her' | 'him' | 'couple'; title: string; children?: ReactNode; action?: ReactNode }) {
+export function EmptyState({ icon, title, children, action }: { icon: IconName; title: string; children?: ReactNode; action?: ReactNode }) {
   return (
     <div className="empty">
       <div className="empty-icon"><Icon name={icon} size={36} /></div>

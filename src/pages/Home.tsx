@@ -9,7 +9,7 @@ import { currentSeason, recommend, type Recommendation } from '../recommend/engi
 import { useImageUrl } from '../lib/useImageUrl';
 import type { Garment } from '../lib/types';
 import { Avatar } from '../components/Mascot';
-import { belongsTo, useCouple } from '../lib/couple';
+import { useMe } from '../lib/couple';
 
 function greeting() {
   const h = new Date().getHours();
@@ -21,27 +21,18 @@ export function Home() {
   const [err, setErr] = useState<string | null>(null);
   const install = useInstallPrompt();
   const standalone = isStandalone();
-  // 今日推薦：有標記擁有者時，兩人各一組
-  const [picks, setPicks] = useState<{ who: 'her' | 'him' | null; r: Recommendation }[]>([]);
+  const [pick, setPick] = useState<Recommendation | null>(null);
   const { settings } = useSettings();
-  const couple = useCouple();
-  const [owned, setOwned] = useState<{ her: number; him: number } | null>(null);
+  const me = useMe();
   const backupDays = settings.lastBackupAt ? Math.floor((Date.now() - settings.lastBackupAt) / 86400000) : null;
   const needBackup = !!counts && counts.garments + counts.persons > 0 && (backupDays === null || backupDays > 14);
   useEffect(() => {
     countAll().then(setCounts, (e: Error) => setErr(e.message));
     // 今日推薦：以日期當亂數種子，同一天看到同一組
     void listGarments().then((gs) => {
-      setOwned({ her: gs.filter((g) => g.owner === 'her').length, him: gs.filter((g) => g.owner === 'him').length });
       const d = new Date();
       const seed = d.getFullYear() * 1000 + d.getMonth() * 40 + d.getDate();
-      const one = (list: Garment[], s: number) => recommend({ garments: list, mode: 'random', season: currentSeason(d), occasion: 'daily', style: 'any', seed: s, count: 1 }).items[0];
-      const anyOwner = gs.some((g) => g.owner === 'her' || g.owner === 'him');
-      const out: { who: 'her' | 'him' | null; r: Recommendation }[] = [];
-      if (anyOwner) {
-        for (const [who, s] of [['her', seed], ['him', seed + 7]] as const) { const r = one(gs.filter((g) => belongsTo(g.owner, who)), s); if (r) out.push({ who, r }); }
-      } else { const r = one(gs, seed); if (r) out.push({ who: null, r }); }
-      setPicks(out);
+      setPick(recommend({ garments: gs, mode: 'random', season: currentSeason(d), occasion: 'daily', style: 'any', seed, count: 1 }).items[0] ?? null);
     });
   }, []);
   const today = new Date().toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'long' });
@@ -51,7 +42,7 @@ export function Home() {
       <header className="greet">
         <p className="greet-date">{today}</p>
         <h1>{greeting()}</h1>
-        <p className="greet-names"><Avatar who="her" size={22} /><Avatar who="him" size={22} /> {couple.herName} 與 {couple.himName}，今天想穿什麼？</p>
+        <p className="greet-names"><Avatar size={24} /> {me.name ? `${me.name}，` : ''}今天想穿什麼？</p>
       </header>
 
       <nav className="shortcuts" aria-label="快速開始">
@@ -73,18 +64,15 @@ export function Home() {
         <a href={href('/outfits')} className="stat"><strong>{counts?.tryons ?? '–'}</strong><span>次試穿</span></a>
       </section>
 
-      {picks.length > 0 && (
+      {pick && (
         <a href="#/outfits?tab=recommend" className="card today">
           <h2 className="today-title">今日推薦</h2>
-          {picks.map(({ who, r }) => (
-            <div key={who ?? 'all'} className="today-pick">
-              {who && <span className="today-who"><Avatar who={who} size={24} /> {couple.nameOf(who)}</span>}
-              <div className="today-row">
-                {[r.outer, r.top, r.dress, r.bottom].filter(Boolean).slice(0, 3).map((g) => <Thumb key={g!.id} g={g!} />)}
-              </div>
-              <p>{r.reasons[0]}</p>
+          <div className="today-pick">
+            <div className="today-row">
+              {[pick.outer, pick.top, pick.dress, pick.bottom].filter(Boolean).slice(0, 3).map((g) => <Thumb key={g!.id} g={g!} />)}
             </div>
-          ))}
+            <p>{pick.reasons[0]}</p>
+          </div>
         </a>
       )}
 

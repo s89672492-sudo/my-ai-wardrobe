@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { askStylist, getGeminiKey, parseStylistReply, type StylistItem, type StylistTurn } from '../lib/cloud-tryon';
-import { belongsTo, useCouple } from '../lib/couple';
+import { useMe } from '../lib/couple';
 import { getImageBlob, listGarments } from '../lib/garments';
 import { listPersons } from '../lib/persons';
 import { href, navigate } from '../lib/router';
 import { CATEGORIES, SEASON_LABEL, type Garment } from '../lib/types';
 import { currentSeason } from '../recommend/engine';
 import { useImageUrl } from '../lib/useImageUrl';
-import { Avatar } from './Mascot';
 import { Icon } from './Icon';
 
 interface Msg { role: 'user' | 'model'; text: string; picks?: Garment[] }
@@ -15,9 +14,8 @@ const SUGGESTIONS = ['明天約會，幫我搭一套', '上班穿什麼比較正
 
 /** 問 AI 怎麼搭（Gemini 文字模型，會傳衣服縮圖）。沒設定金鑰時顯示說明 */
 export function AiStylist() {
-  const couple = useCouple();
+  const me = useMe();
   const [hasKey] = useState(() => !!getGeminiKey());
-  const [who, setWho] = useState<'her' | 'him'>('her');
   const [garments, setGarments] = useState<Garment[] | null>(null);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [q, setQ] = useState('');
@@ -36,7 +34,7 @@ export function AiStylist() {
     );
   }
 
-  const mine = (garments ?? []).filter((g) => belongsTo(g.owner, who));
+  const mine = garments ?? [];
   const label = (g: Garment) => CATEGORIES.find((c) => c.id === g.category)?.label ?? '';
 
   async function send(text: string) {
@@ -59,7 +57,7 @@ export function AiStylist() {
         items.push({ ref, image: blob, desc: [g.name, label(g), g.color, g.seasons.map((s) => SEASON_LABEL[s]).join(''), (g.styles ?? []).join('/')].filter(Boolean).join('，') });
       }
       const turns: StylistTurn[] = next.map((m) => ({ role: m.role, text: m.text }));
-      const reply = await askStylist(items, turns, { who: who === 'her' ? couple.herName : couple.himName, season: `${SEASON_LABEL[currentSeason()]}季`, signal: abort.current.signal });
+      const reply = await askStylist(items, turns, { who: me.name || '我', season: `${SEASON_LABEL[currentSeason()]}季`, signal: abort.current.signal });
       const { body, refs } = parseStylistReply(reply);
       setMsgs([...next, { role: 'model', text: body, picks: refs.map((r) => refOf.get(r)).filter(Boolean) as Garment[] }]);
     } catch (e) {
@@ -77,11 +75,6 @@ export function AiStylist() {
   return (
     <section className="card ai-stylist">
       <h2 className="card-title">問 AI 怎麼搭</h2>
-      <div className="owner-tabs two" role="tablist" aria-label="幫誰搭配">
-        {(['her', 'him'] as const).map((w) => (
-          <button key={w} role="tab" aria-selected={who === w} className={`owner-tab who-${w} ${who === w ? 'on' : ''}`} onClick={() => { setWho(w); setMsgs([]); }}><Avatar who={w} size={24} /> {w === 'her' ? couple.herName : couple.himName}</button>
-        ))}
-      </div>
       <ul className="chat" aria-live="polite">
         {msgs.map((m, i) => (
           <li key={i} className={`bubble-msg ${m.role}`}>
@@ -102,7 +95,7 @@ export function AiStylist() {
         <input className="input" value={q} maxLength={200} placeholder="例如：20 度去看電影怎麼穿？" onChange={(e) => setQ(e.target.value)} aria-label="問 AI 怎麼搭" />
         <button className="btn btn-primary btn-small" disabled={busy || !q.trim()}>送出</button>
       </form>
-      <details className="more-info"><summary>更多資訊</summary><p>會把{who === 'her' ? couple.herName : couple.himName}的衣服縮圖傳到 Google Gemini 分析，每次約 NT$0.1–0.3。AI 建議僅供參考。</p></details>
+      <details className="more-info"><summary>更多資訊</summary><p>會把衣櫥裡的衣服縮圖傳到 Google Gemini 分析，每次約 NT$0.1–0.3。AI 建議僅供參考。</p></details>
     </section>
   );
 }

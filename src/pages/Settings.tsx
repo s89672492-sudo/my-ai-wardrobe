@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Badge, ListLink, PageHeader } from '../components/ui';
 import { Icon } from '../components/Icon';
-import { CoupleEditor } from '../components/CoupleEditor';
+import { ProfileEditor } from '../components/ProfileEditor';
 import { GeminiSettings } from '../components/GeminiSettings';
+import { defaultMethods, ProcessOptions } from '../components/ProcessOptions';
+import { getGeminiKey } from '../lib/cloud-tryon';
 import { AIClient } from '../ai/client';
 import { CLASSIFIER_MODEL_URL, CUTOUT_MODEL_URL, MODEL_URLS, WASM_PATH, modelsCached } from '../ai/assets';
 import { formatMB, getStorageInfo, useOnline, type StorageInfo } from '../lib/platform';
@@ -24,6 +26,7 @@ export function Settings() {
   const [cached, setCached] = useState<boolean | null>(null);
   const [dl, setDl] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ text: string; tone: 'ok' | 'err' } | null>(null);
+  const [hasKey, setHasKey] = useState(() => !!getGeminiKey());
 
   const refresh = () => { void getStorageInfo().then(setStorage); void modelsCached().then(setCached); };
   useEffect(refresh, []);
@@ -54,11 +57,16 @@ export function Settings() {
       {error && <div className="alert alert-err">{error}</div>}
       {msg && <div className={`alert alert-${msg.tone}`} role="status" onClick={() => setMsg(null)}>{msg.text}</div>}
 
-      <h3 className="section-title">我們</h3>
-      <CoupleEditor />
+      <h3 className="section-title">我的名字與頭像</h3>
+      <ProfileEditor />
 
-      <h3 className="section-title">雲端 AI 試穿（Gemini，選用）</h3>
-      <GeminiSettings />
+      <h3 className="section-title">雲端 AI（Gemini，選用）</h3>
+      <GeminiSettings onChange={setHasKey} />
+
+      <h3 className="section-title">新增衣服的去背與判斷（預設）</h3>
+      <ProcessOptions name="default" hasKey={hasKey} {...defaultMethods(settings, hasKey)}
+        onCutout={(m) => void update({ cutoutMethod: m })} onJudge={(m) => void update({ judgeMethod: m })} />
+      <p className="muted small-note">一次新增多件、重新處理舊衣服時會先用這裡的設定，每批開始前都能再改。</p>
 
       <h3 className="section-title">外觀</h3>
       <div className="segmented three" role="radiogroup" aria-label="外觀">

@@ -9,8 +9,6 @@ import { SEASON_LABEL, SEASONS, type Garment, type Season } from '../lib/types';
 import { useImageUrl } from '../lib/useImageUrl';
 import { EmptyState } from './ui';
 import { Icon } from './Icon';
-import { Avatar } from './Mascot';
-import { belongsTo, useCouple } from '../lib/couple';
 
 type StylePref = 'any' | 'casual' | 'formal';
 
@@ -25,11 +23,7 @@ export function RecommendPanel() {
   const [recent, setRecent] = useState<string[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
-  const [who, setWho] = useState<'her' | 'him'>(() => { try { return (sessionStorage.getItem('rec-who') as 'her' | 'him') || 'her'; } catch { return 'her'; } });
-  const couple = useCouple();
-  useEffect(() => { try { sessionStorage.setItem('rec-who', who); } catch { /* ignore */ } }, [who]);
-  // 只用這個人的衣服與共用衣服搭配
-  const mine = useMemo(() => garments?.filter((g) => belongsTo(g.owner, who)) ?? null, [garments, who]);
+  const mine = garments;
 
   useEffect(() => {
     void listGarments().then(setGarments);
@@ -52,7 +46,7 @@ export function RecommendPanel() {
   }
   async function save(r: Recommendation) {
     const names = [r.outer, r.top, r.dress, r.bottom].filter(Boolean).map((g) => g!.name);
-    await saveOutfit({ name: `${couple.nameOf(who)}・${mode === 'occasion' ? OCCASION_ZH[occasion] : MODE_ZH[mode]}：${names.join(' + ')}`, garmentIds: r.garmentIds, tags: [mode, season, who, ...(mode === 'occasion' ? [occasion] : [])], source: 'recommend' });
+    await saveOutfit({ name: `${mode === 'occasion' ? OCCASION_ZH[occasion] : MODE_ZH[mode]}：${names.join(' + ')}`, garmentIds: r.garmentIds, tags: [mode, season, ...(mode === 'occasion' ? [occasion] : [])], source: 'recommend' });
     await addHistory('recommend', `rec:${r.key}`);
     setSavedKeys((s) => new Set(s).add(r.key));
     setMsg('已加入收藏穿搭');
@@ -61,12 +55,7 @@ export function RecommendPanel() {
 
   return (
     <div className="recommend">
-      <div className="owner-tabs two" role="tablist" aria-label="幫誰搭配">
-        {(['her', 'him'] as const).map((w) => (
-          <button key={w} role="tab" aria-selected={who === w} className={`owner-tab who-${w} ${who === w ? 'on' : ''}`} onClick={() => setWho(w)}><Avatar who={w} size={26} /> 幫{couple.nameOf(w)}搭</button>
-        ))}
-      </div>
-      <div className="segmented four" role="tablist" aria-label="推薦方式" style={{ marginTop: 10 }}>
+      <div className="segmented four" role="tablist" aria-label="推薦方式">
         {(['random', 'color', 'season', 'occasion'] as const).map((m) => (
           <button key={m} role="tab" aria-selected={mode === m} className={mode === m ? 'on' : ''} onClick={() => setMode(m)}>{MODE_ZH[m].replace('搭配', '')}</button>
         ))}
@@ -86,7 +75,7 @@ export function RecommendPanel() {
       {msg && <div className="inline-toast" role="status">{msg}</div>}
 
       {garments && result?.problem && (
-        <EmptyState icon="hanger" mascot={who} title="還沒辦法推薦" action={<a className="btn btn-primary" href={href('/wardrobe/new')}>新增衣服</a>}>{result.problem}</EmptyState>
+        <EmptyState icon="hanger" title="還沒辦法推薦" action={<a className="btn btn-primary" href={href('/wardrobe/new')}>新增衣服</a>}>{result.problem}</EmptyState>
       )}
       {result?.items.map((r, i) => <RecCard key={r.key} r={r} rank={i + 1} saved={savedKeys.has(r.key)} onTry={() => void tryOn(r)} onSave={() => void save(r)} />)}
       {result && result.items.length > 0 && (result.total > result.items.length

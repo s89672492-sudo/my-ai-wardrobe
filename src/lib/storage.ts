@@ -37,8 +37,8 @@ async function referencedImageIds(): Promise<Set<string>> {
   for (const g of await db.getAll('garments')) [g.originalImageId, g.cutoutImageId, g.thumbImageId].forEach((i) => i && ids.add(i));
   for (const p of await db.getAll('persons')) [p.imageId, p.thumbImageId, p.maskImageId, p.parseImageId].forEach((i) => i && ids.add(i));
   for (const t of await db.getAll('tryons')) [t.imageId, t.thumbImageId].forEach((i) => i && ids.add(i));
-  const c = (await db.get('settings', 'app'))?.couple;
-  [c?.herAvatarId, c?.himAvatarId].forEach((i) => i && ids.add(i));
+  const st = await db.get('settings', 'app');
+  [st?.couple?.herAvatarId, st?.couple?.himAvatarId, st?.me?.avatarId].forEach((i) => i && ids.add(i));
   return ids;
 }
 

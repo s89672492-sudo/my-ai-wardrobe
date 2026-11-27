@@ -655,3 +655,23 @@ h1, h2, .page-header h1, .empty h2, .today-title, .card-title, .greet h1, .stat 
 .stat span { font-size: 13px; }
 .page-header p, .greet-date { font-size: 14px; }
 .more-info { font-size: 14px; }
+
+/* ---------- 個人頭像、批次處理、選取模式 ---------- */
+.profile-edit { display: flex; align-items: center; gap: 14px; }
+.profile-fields { flex: 1; display: grid; gap: 10px; min-width: 0; }
+.process-opts { margin: 0 0 12px; border: 1px solid var(--line); }
+.process-opts legend { font-family: var(--serif); font-weight: 600; font-size: 16px; padding: 0 6px; color: var(--ink); }
+.process-opts .cost { font-style: normal; font-weight: 500; font-size: 13px; color: var(--muted); margin-left: 8px; }
+.batch-cost b { color: var(--accent); }
+.batch-confirm, .batch-resume, .batch-done { display: grid; gap: 10px; }
+.batch-confirm p, .batch-resume p, .batch-done p { margin: 0; }
+.header-actions { display: inline-flex; gap: 8px; }
+.select-card { position: relative; width: 100%; color: var(--ink); font: inherit; }
+.select-card .garment-img { outline: 2px solid transparent; outline-offset: -2px; transition: outline-color .15s ease; }
+.select-card.on .garment-img { outline-color: var(--accent); }
+.select-card .garment-name, .select-card .garment-meta { display: block; }
+.select-mark { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; border: 1.5px solid #fff; background: rgba(0,0,0,.25); color: #fff; font-size: 16px; font-weight: 700; }
+.select-card.on .select-mark { background: var(--accent-bg, var(--accent)); border-color: var(--accent-bg, var(--accent)); }
+.select-bar { position: fixed; left: 0; right: 0; bottom: calc(57px + env(safe-area-inset-bottom)); z-index: 20; display: flex; gap: 10px; justify-content: space-between; padding: 10px 16px; background: var(--card); border-top: 1px solid var(--line); }
+.select-bar .btn-primary { flex: 1; }
+.page.selecting { padding-bottom: 140px; }
