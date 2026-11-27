@@ -523,3 +523,17 @@ a.pick-btn { text-decoration: none; color: inherit; }
 .cloud-badge { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 999px; background: var(--butter); color: var(--on-accent); border: 2px solid var(--edge); margin-bottom: 8px; }
 .cloud-stage-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: var(--paper); }
 .cloud-switch { margin-bottom: 10px; }
+/* 問 AI 怎麼搭 */
+.ai-stylist .owner-tabs { margin-top: 4px; }
+.chat { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 10px; }
+.bubble-msg { max-width: 88%; padding: 10px 14px; border-radius: 18px; border: 2px solid var(--line); background: var(--surface); }
+.bubble-msg.user { justify-self: end; background: var(--pink-soft); border-color: var(--pink); }
+.bubble-msg.model { justify-self: start; }
+.bubble-msg p { margin: 0; white-space: pre-wrap; line-height: 1.6; font-size: 15px; }
+.chat-picks { display: flex; gap: 8px; overflow-x: auto; margin: 8px 0; }
+.chat-pick { flex: none; width: 72px; text-decoration: none; color: inherit; font-size: 11px; }
+.chat-pick img { width: 72px; height: 96px; object-fit: cover; border-radius: 10px; border: 2px solid var(--line); display: block; background: #fbfbfe; }
+.chat-pick span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.chat-input { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+.chat-input .input { flex: 1; margin-top: 0; }
+.chat-input .btn { margin: 0; }

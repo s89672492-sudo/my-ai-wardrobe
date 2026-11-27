@@ -23,7 +23,8 @@
 
 - 只有按下按鈕並確認後，才會把那張全身照與衣服照傳到 Google；手機直接呼叫 Google，不經過其他伺服器。
 - 金鑰只存在手機的 localStorage，不進 IndexedDB／備份檔、程式碼或 GitHub。
-- 費用由使用者自己的 Google 帳戶支付（約每張 US$0.04）；建議在 Google Cloud 設定預算上限，並把金鑰限制在本網站與 Generative Language API。
+- 另有「問 AI 怎麼搭」：用 Gemini 文字模型（gemini-2.5-flash）看衣服縮圖給搭配建議，每次約 NT$0.1–0.3。
+- 費用由使用者自己的 Google 帳戶支付（試穿約每張 US$0.04）；建議在 Google Cloud 設定預算上限，並把金鑰限制在本網站與 Generative Language API。
 - CSP 只多允許 `https://generativelanguage.googleapis.com` 一個網域。
 
 ## 隱私

@@ -17,7 +17,7 @@ export function setGeminiModel(m: string) { try { if (m.trim() && m.trim() !== D
 export const maskKey = (k: string) => (k.length > 10 ? `${k.slice(0, 4)}…${k.slice(-4)}` : '已設定');
 
 /** 縮成長邊 1024 的 JPEG（減少流量與費用；透明背景補白） */
-async function toJpegBase64(src: Blob | HTMLCanvasElement, maxSide = 1024): Promise<string> {
+export async function toJpegBase64(src: Blob | HTMLCanvasElement, maxSide = 1024): Promise<string> {
   const bmp = await createImageBitmap(src);
   const s = Math.min(1, maxSide / Math.max(bmp.width, bmp.height));
   const c = document.createElement('canvas');
@@ -88,4 +88,48 @@ export async function cloudTryOn(person: Blob | HTMLCanvasElement, garments: Clo
   const bin = atob(data); const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return new Blob([bytes], { type: mime });
+}
+
+/** 問 AI 怎麼搭：Gemini 文字模型（看得懂圖片），費用遠低於圖片模型 */
+export const DEFAULT_GEMINI_TEXT_MODEL = 'gemini-2.5-flash';
+export interface StylistItem { ref: string; image: Blob; desc: string }
+export interface StylistTurn { role: 'user' | 'model'; text: string }
+
+export async function askStylist(items: StylistItem[], turns: StylistTurn[], opts: { who: string; season: string; signal?: AbortSignal }): Promise<string> {
+  const key = getGeminiKey();
+  if (!key) throw new Error('尚未設定 Gemini 金鑰，請先到「設定」貼上。');
+  if (!navigator.onLine) throw new Error('目前離線，問 AI 需要網路。');
+  const sys = [
+    `你是貼心的穿搭顧問，用繁體中文、口語、簡短回答（150 字內）。現在是${opts.season}，幫「${opts.who}」搭配。`,
+    '只能使用下面衣櫥清單裡的衣服，每件衣服前面有編號與一張照片。不要推薦清單以外的衣服；衣櫥缺少的單品可以建議「可以考慮添購…」。',
+    '回答最後一行固定寫出你推薦的衣服編號，格式：[[推薦:#3,#7]]；沒有要推薦就寫 [[推薦:]]。',
+  ].join('\n');
+  const wardrobe: unknown[] = [{ text: '衣櫥清單：' }];
+  for (const it of items) {
+    wardrobe.push({ text: `${it.ref}：${it.desc}` });
+    wardrobe.push({ inline_data: { mime_type: 'image/jpeg', data: await toJpegBase64(it.image, 256) } });
+  }
+  const contents = [
+    { role: 'user', parts: wardrobe },
+    { role: 'model', parts: [{ text: '好的，我看過你的衣櫥了，請問想怎麼搭？[[推薦:]]' }] },
+    ...turns.map((t) => ({ role: t.role, parts: [{ text: t.text }] })),
+  ];
+  const res = await fetch(`${GEMINI_HOST}/v1beta/models/${DEFAULT_GEMINI_TEXT_MODEL}:generateContent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+    body: JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents, generationConfig: { temperature: 0.7, maxOutputTokens: 800 } }),
+    signal: opts.signal,
+  }).catch((e: Error) => { throw new Error(e.name === 'AbortError' ? '已取消' : `無法連線到 Google：${e.message}`); });
+  const json = await res.json().catch(() => ({})) as { error?: { message?: string }; candidates?: { content?: { parts?: { text?: string }[] } }[] };
+  if (!res.ok) throw new Error(friendly(res.status, json.error?.message ?? ''));
+  const text = json.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('').trim();
+  if (!text) throw new Error('AI 沒有回覆，請換個問法再試一次。');
+  return text;
+}
+
+/** 從回覆中取出推薦編號（#3 → 3），並去掉標記 */
+export function parseStylistReply(text: string): { body: string; refs: string[] } {
+  const m = text.match(/\[\[推薦:([^\]]*)\]\]/);
+  const refs = m ? (m[1]!.match(/#\d+/g) ?? []) : [];
+  return { body: text.replace(/\[\[推薦:[^\]]*\]\]/g, '').trim(), refs: [...new Set(refs)] };
 }

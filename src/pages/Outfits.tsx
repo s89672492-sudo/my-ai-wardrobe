@@ -9,6 +9,7 @@ import { deleteTryOn, listTryOns } from '../lib/tryons';
 import { deleteOutfit } from '../lib/outfits';
 import { listHistory } from '../lib/history';
 import { RecommendPanel } from '../components/RecommendPanel';
+import { AiStylist } from '../components/AiStylist';
 import type { HistoryEntry } from '../lib/types';
 import { listGarments } from '../lib/garments';
 import type { Garment } from '../lib/types';
@@ -39,7 +40,7 @@ export function Outfits() {
         <button role="tab" aria-selected={tab === 'saved'} className={tab === 'saved' ? 'on' : ''} onClick={() => { setTab('saved'); void load(); }}>收藏穿搭{outfits?.length ? ` ${outfits.length}` : ''}</button>
         <button role="tab" aria-selected={tab === 'history'} className={tab === 'history' ? 'on' : ''} onClick={() => { setTab('history'); void load(); }}>試穿紀錄{tryons?.length ? ` ${tryons.length}` : ''}</button>
       </div>
-      {tab === 'recommend' && <div style={{ marginTop: 12 }}><RecommendPanel /></div>}
+      {tab === 'recommend' && <div style={{ marginTop: 12 }}><AiStylist /><RecommendPanel /></div>}
       {err && <div className="alert alert-err">{err}</div>}
       {tab === 'saved' && outfits?.length === 0 && <EmptyState icon="heart" mascot="her" title="還沒有收藏的穿搭" action={<a className="btn btn-primary" href={href('/tryon')}>去搭配</a>}>在 AI 試穿頁組合上衣、下身、外套後按「收藏穿搭」。</EmptyState>}
       {tab === 'saved' && (

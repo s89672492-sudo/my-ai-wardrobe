@@ -138,10 +138,14 @@ try {
   const studioUrl = page.url();
   ok((await page.locator('.cloud-tryon').count()) === 0, 'cloud try-on hidden when no Gemini key is set');
   const FAKE_KEY = 'AIza' + 'TESTKEY'.repeat(5);
-  let geminiReq = null;
+  let geminiReq = null, stylistReq = null;
   await page.route('https://generativelanguage.googleapis.com/**', async (route) => {
     const r = route.request();
     if (r.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'POST' } });
+    if (r.url().includes('gemini-2.5-flash:generateContent')) {
+      stylistReq = r.postDataJSON();
+      return route.fulfill({ status: 200, headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*' }, body: JSON.stringify({ candidates: [{ content: { parts: [{ text: '約會可以穿 #1 這件，簡單又好看。\n[[推薦:#1]]' }] } }] }) });
+    }
     geminiReq = { url: r.url(), key: r.headers()['x-goog-api-key'], body: r.postDataJSON() };
     const png = 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP8z8DAwMDAxMDAwMDAAAANHQEDK+mmyAAAAABJRU5ErkJggg==';
     await route.fulfill({ status: 200, headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*' }, body: JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ inlineData: { mimeType: 'image/png', data: png } }] } }] }) });
@@ -158,6 +162,16 @@ try {
   ok(!!geminiReq && geminiReq.key === FAKE_KEY && /gemini-2\.5-flash-image:generateContent/.test(geminiReq.url) && parts.filter((x) => x.inline_data).length >= 2 && !geminiReq.url.includes(FAKE_KEY),
     `cloud try-on request: key in header (not URL), person + garment images (${parts.filter((x) => x.inline_data).length} images)`);
   ok(await page.locator('img.cloud-stage-img').isVisible().catch(() => false) && (await page.locator('.cloud-switch').count()) === 1, 'cloud try-on result shown in the main preview');
+  // 問 AI 怎麼搭（Gemini 文字模型）：送出問題 → 顯示回覆、推薦的衣服與「試穿這套」
+  await page.goto(BASE + '#/outfits?tab=recommend');
+  await page.waitForSelector('.ai-stylist input[aria-label="問 AI 怎麼搭"]', { timeout: 15000 });
+  await page.fill('.ai-stylist input[aria-label="問 AI 怎麼搭"]', '明天約會怎麼穿？');
+  await page.click('.ai-stylist button:has-text("送出")');
+  await page.waitForSelector('.bubble-msg.model .chat-pick', { timeout: 30000 }).catch(() => {});
+  const sParts = stylistReq?.contents?.[0]?.parts ?? [];
+  ok(!!stylistReq && sParts.some((x) => x.inline_data) && JSON.stringify(stylistReq).includes('明天約會怎麼穿') && !!stylistReq.systemInstruction, `ask-AI stylist sends wardrobe thumbnails and the question (${sParts.filter((x) => x.inline_data).length} images)`);
+  ok((await page.locator('.bubble-msg.model .chat-pick').count()) >= 1 && (await page.locator('.bubble-msg.model button:has-text("試穿這套")').count()) === 1 && !(await page.locator('.bubble-msg.model').innerText()).includes('[['), 'ask-AI stylist shows reply, picked garments and a try-on button');
+
   await page.goto(BASE + '#/settings');
   await page.click('.gemini button:has-text("刪除")');
   ok(await page.evaluate(() => !localStorage.getItem('wardrobe-gemini-key')), 'Gemini key can be removed');
