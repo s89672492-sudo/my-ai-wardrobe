@@ -61,7 +61,6 @@ export function RecommendPanel() {
 
   return (
     <div className="recommend">
-      <p className="muted small-note"><Icon name="shield" size={14} /> 依你衣櫥裡的衣服，在手機上用規則計算，不使用雲端 AI</p>
       <div className="owner-tabs two" role="tablist" aria-label="幫誰搭配">
         {(['her', 'him'] as const).map((w) => (
           <button key={w} role="tab" aria-selected={who === w} className={`owner-tab who-${w} ${who === w ? 'on' : ''}`} onClick={() => setWho(w)}><Avatar who={w} size={26} /> 幫{couple.nameOf(w)}搭</button>
@@ -93,7 +92,7 @@ export function RecommendPanel() {
       {result && result.items.length > 0 && (result.total > result.items.length
         ? <button className="btn" onClick={reroll}><Icon name="rotate" size={18} /> 換一組</button>
         : <p className="muted center">符合目前條件的組合只有 {result.total} 組。新增衣服、補上季節標籤或換個條件，可以看到更多搭配。</p>)}
-      {result && result.items.length > 0 && <p className="disclaimer">推薦依顏色、季節、正式程度等規則計算，只會使用你衣櫥中已有的衣服。為衣服加上顏色、季節與風格標籤，推薦會更準。</p>}
+      {result && result.items.length > 0 && <details className="more-info"><summary>更多資訊</summary><p>推薦依顏色、季節、正式程度等規則計算，只會使用你衣櫥中已有的衣服。為衣服加上顏色、季節與風格標籤，推薦會更準。 這裡的推薦在手機上用規則計算，不使用雲端 AI。</p></details>}
     </div>
   );
 }

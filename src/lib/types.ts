@@ -43,7 +43,7 @@ export interface Garment {
   owner?: Owner;
 }
 
-/** 她（三花貓）／他（橘貓）／共用 */
+/** 她／他／共用 */
 export type Owner = 'her' | 'him' | 'both';
 
 export type ImageKind = 'garment-original' | 'garment-cutout' | 'person' | 'person-mask' | 'person-parse' | 'tryon' | 'thumbnail' | 'avatar';
@@ -112,5 +112,5 @@ export interface AppSettings {
   couple?: CoupleSettings;
 }
 export interface CoupleSettings { herName: string; himName: string; herAvatarId?: string; himAvatarId?: string }
-export const DEFAULT_COUPLE: CoupleSettings = { herName: '小花', himName: '小橘' };
+export const DEFAULT_COUPLE: CoupleSettings = { herName: '她', himName: '他' };
 export const DEFAULT_SETTINGS: AppSettings = { computeMode: 'auto', backend: 'auto', imageQuality: 'standard' };

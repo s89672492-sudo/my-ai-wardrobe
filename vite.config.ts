@@ -31,8 +31,8 @@ export default defineConfig(({ mode }) => {
           scope: base,
           display: 'standalone',
           orientation: 'portrait',
-          background_color: '#eef3fb',
-          theme_color: '#eef3fb',
+          background_color: '#ffffff',
+          theme_color: '#ffffff',
           categories: ['lifestyle', 'shopping'],
           icons: [
             { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },

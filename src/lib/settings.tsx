@@ -32,7 +32,7 @@ export function applyTheme(t: 'auto' | 'light' | 'dark') {
   if (t === 'auto') delete root.dataset.theme; else root.dataset.theme = t;
   try { localStorage.setItem(THEME_KEY, t); } catch { /* ignore */ }
   const dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#17162a' : '#eef3fb');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#121110' : '#ffffff');
 }
 export function applySavedTheme() {
   let t: string | null = null;

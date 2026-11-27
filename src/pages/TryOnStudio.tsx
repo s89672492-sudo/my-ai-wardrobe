@@ -356,9 +356,8 @@ export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { per
               <input type="range" min={0} max={100} step={5} value={shadingPct} aria-label="光影融合強度" onChange={(e) => void update({ tryOnShading: +e.target.value })} />
               <b>{shadingPct}%</b>
             </label>
-            <p className="muted small-note">把照片中原本的明暗、皺褶與環境色調套到衣服上，看起來比較不像貼上去的。</p>
             <label className="option toggle">
-              <span><b>擦掉露出來的舊衣服</b><small>新衣服沒蓋到的舊衣服，用旁邊的背景或膚色補上（試穿上衣只處理腰線以上、褲裙只處理腰線以下）</small></span>
+              <span><b>擦掉露出來的舊衣服</b></span>
               <input type="checkbox" role="switch" checked={eraseOld} disabled={!parse} onChange={(e) => void update({ tryOnErase: e.target.checked })} />
             </label>
             {person && !person.parseImageId && (
@@ -413,7 +412,6 @@ export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { per
             <button className="btn" disabled={!!busy || !!saved.outfitId || slots.length < 1} onClick={() => void favorite()}><Icon name="heart" size={18} filled={!!saved.outfitId} /> {saved.outfitId ? '已收藏' : '收藏穿搭'}</button>
           </div>
           <button className="btn" onClick={() => void share()}><Icon name="share" size={18} /> 分享圖片</button>
-          <p className="muted center">本機合成 {Math.round(result.ms)} ms · {layers.length} 件</p>
         </>
       )}
       <CloudTryOn
@@ -423,7 +421,7 @@ export function TryOnStudio({ personId, garmentId, outfitId, garmentIds }: { per
         onResult={(u) => { setCloudUrl(u); setShowCloud(true); setMode('result'); }}
         onShare={async (b) => { await saveFile(new File([b], `ai-tryon-cloud-${Date.now()}.${b.type.includes('png') ? 'png' : 'jpg'}`, { type: b.type })); }}
       />
-      <p className="disclaimer">說明：試穿圖是把衣服照片依身體關鍵點變形後合成的 2D 預覽（電腦視覺 + 圖像合成），不是生成式 AI。「光影」會借用照片中原本的明暗與皺褶；擦掉舊衣服後補上的是推估的背景與膚色，不是真實照到的身體。不會重建新衣服本身的布料皺褶與實際合身度，僅供搭配參考。</p>
+      <details className="more-info"><summary>更多資訊</summary><p>說明：試穿圖是把衣服照片依身體關鍵點變形後合成的 2D 預覽（電腦視覺 + 圖像合成），不是生成式 AI。「光影」會借用照片中原本的明暗與皺褶；擦掉舊衣服後補上的是推估的背景與膚色，不是真實照到的身體。不會重建新衣服本身的布料皺褶與實際合身度，僅供搭配參考。</p>{result && <p>本機合成 {Math.round(result.ms)} ms · {layers.length} 件</p>}</details>
     </div>
   );
 }

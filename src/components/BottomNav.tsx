@@ -16,7 +16,7 @@ export function BottomNav({ route }: { route: Route }) {
     <nav className={s.nav} aria-label="主要導覽">
       {TABS.map((t) => (
         <a key={t.to} href={href(t.to)} className={active(t) ? `${s.tab} ${s.active}` : s.tab} aria-current={active(t) ? 'page' : undefined}>
-          <Icon name={t.icon} size={24} filled={active(t) && t.icon !== 'sparkle' && t.icon !== 'hanger'} />
+          <Icon name={t.icon} size={22} />
           <span>{t.label}</span>
         </a>
       ))}

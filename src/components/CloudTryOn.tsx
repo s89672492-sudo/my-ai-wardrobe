@@ -56,8 +56,7 @@ export function CloudTryOn({ photo, garments, onSave, onShare, onResult }: {
 
   return (
     <section className="card cloud-tryon">
-      <span className="cloud-badge">雲端 AI · Gemini</span>
-      <p className="muted small-note">用生成式 AI 重新畫出穿上這些衣服的照片（皺褶、光影較自然）。照片會傳到 Google；AI 偶爾會改到臉或背景。</p>
+      <h2 className="card-title">雲端 AI 試穿</h2>
       <input className="input" value={extra} maxLength={120} placeholder="補充說明（選填），例如：上衣紮進褲子、袖子捲起" onChange={(e) => setExtra(e.target.value)} aria-label="雲端 AI 試穿補充說明" />
       {busy
         ? <button className="btn" onClick={() => abort.current?.abort()}><span className="spinner" /> 雲端產生中…（約 10–30 秒）按此取消</button>
@@ -65,14 +64,13 @@ export function CloudTryOn({ photo, garments, onSave, onShare, onResult }: {
       {err && <div className="alert alert-err" role="alert">{err}</div>}
       {url && (
         <div className="cloud-result">
-          <p className="muted small-note">✓ 結果已顯示在上方的試穿圖（可切換「雲端 AI／本機」）</p>
           <div className="row-2">
             <button className="btn btn-primary" disabled={saved} onClick={() => void save()}>{saved ? '已儲存' : '存到試穿紀錄'}</button>
             <button className="btn" onClick={() => blob && void onShare(blob)}><Icon name="share" size={18} /> 分享圖片</button>
           </div>
-          <p className="disclaimer">這張是 Google Gemini 生成的圖片，不是真實照片；衣服細節、合身度與長相可能和實際不同。</p>
         </div>
       )}
+      <details className="more-info"><summary>更多資訊</summary><p>用 Google Gemini 重新畫出穿上這些衣服的照片，照片會傳到 Google，每張約 US$0.04。生成的圖不是真實照片，衣服細節、合身度與長相可能和實際不同。結果會顯示在上方的試穿圖，可切換「雲端 AI／本機」。</p></details>
     </section>
   );
 }

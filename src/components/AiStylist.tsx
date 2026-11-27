@@ -29,7 +29,7 @@ export function AiStylist() {
   if (!hasKey) {
     return (
       <div className="card ai-stylist">
-        <span className="cloud-badge">問 AI 怎麼搭 · Gemini</span>
+        <h2 className="card-title">問 AI 怎麼搭</h2>
         <p className="muted small-note">在「設定 → 雲端 AI 試穿」貼上 Gemini 金鑰後，就能用聊天的方式問 AI 怎麼用你衣櫥裡的衣服搭配。</p>
         <a className="btn" href={href('/settings')}>到設定頁</a>
       </div>
@@ -76,7 +76,7 @@ export function AiStylist() {
 
   return (
     <section className="card ai-stylist">
-      <span className="cloud-badge">問 AI 怎麼搭 · Gemini</span>
+      <h2 className="card-title">問 AI 怎麼搭</h2>
       <div className="owner-tabs two" role="tablist" aria-label="幫誰搭配">
         {(['her', 'him'] as const).map((w) => (
           <button key={w} role="tab" aria-selected={who === w} className={`owner-tab who-${w} ${who === w ? 'on' : ''}`} onClick={() => { setWho(w); setMsgs([]); }}><Avatar who={w} size={24} /> {w === 'her' ? couple.herName : couple.himName}</button>
@@ -102,7 +102,7 @@ export function AiStylist() {
         <input className="input" value={q} maxLength={200} placeholder="例如：20 度去看電影怎麼穿？" onChange={(e) => setQ(e.target.value)} aria-label="問 AI 怎麼搭" />
         <button className="btn btn-primary btn-small" disabled={busy || !q.trim()}>送出</button>
       </form>
-      <p className="muted small-note">會把{who === 'her' ? couple.herName : couple.himName}的衣服縮圖傳到 Google 分析；AI 建議僅供參考。</p>
+      <details className="more-info"><summary>更多資訊</summary><p>會把{who === 'her' ? couple.herName : couple.himName}的衣服縮圖傳到 Google Gemini 分析，每次約 NT$0.1–0.3。AI 建議僅供參考。</p></details>
     </section>
   );
 }

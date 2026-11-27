@@ -122,12 +122,12 @@ try {
   const sug = await page.locator('.ai-suggest').innerText().catch(() => '');
   ok(/T-shirt/.test(sug), `AI category suggestion for the T-shirt photo (${sug.replace(/\n/g, ' ')})`);
   await page.click('.chip-grid .chip >> text=T-shirt');
-  await page.click('.owner-tab:has-text("小花")');
+  await page.click('.owner-tab:has-text("她")');
   await page.click('.sticky-actions >> text=儲存');
   await page.waitForSelector('.specs');
   await page.click('button:has-text("試穿這件")');
-  await page.waitForSelector('text=本機合成', { timeout: 60000 });
-  const ms1 = await page.locator('text=本機合成').innerText();
+  await page.waitForSelector('.more-info p:has-text("本機合成")', { state: 'attached', timeout: 60000 });
+  const ms1 = await page.locator('.more-info p:has-text("本機合成")').textContent();
   ok(!(await page.locator('.alert-err').count()), `try-on composed (${ms1})`);
   const lastCompose = await page.evaluate(() => { try { const m = JSON.parse(localStorage.getItem('wardrobe-metrics-v1') || '{}'); return m.compose?.at(-1)?.detail ?? ''; } catch { return ''; } });
   ok(lastCompose && !lastCompose.includes('主執行緒'), `try-on composed in background worker (${lastCompose})`);
@@ -177,7 +177,7 @@ try {
   ok(await page.evaluate(() => !localStorage.getItem('wardrobe-gemini-key')), 'Gemini key can be removed');
   await page.unroute('https://generativelanguage.googleapis.com/**');
   await page.goto(studioUrl);
-  await page.waitForSelector('text=本機合成', { timeout: 60000 });
+  await page.waitForSelector('.more-info p:has-text("本機合成")', { state: 'attached', timeout: 60000 });
   await page.screenshot({ path: path.join(OUT, `${tag}-tryon.png`), fullPage: true });
   await page.click('button[role=tab]:has-text("手動調整")');
   await page.locator('.slider input').first().fill('1.15');
@@ -214,7 +214,7 @@ try {
   await page.click('.sticky-actions >> text=儲存');
   await page.waitForSelector('.specs');
   await page.click('button:has-text("試穿這件")');
-  await page.waitForSelector('text=本機合成', { timeout: 60000 });
+  await page.waitForSelector('.more-info p:has-text("本機合成")', { state: 'attached', timeout: 60000 });
   // 加入上衣（第一個非長褲的衣服）
   await page.locator('.strip-item:not(.on)').first().click();
   await page.waitForFunction(() => document.querySelectorAll('.layers li').length === 3, null, { timeout: 30000 });
@@ -263,8 +263,8 @@ try {
   ok(await page.locator('.couple-person').first().locator('.avatar img').count() === 1, 'couple: custom avatar saved locally');
   await page.goto(BASE + '#/');
   await page.reload();
-  await page.waitForFunction(() => /一二[\s\S]*布布/.test(document.querySelector('.hero')?.innerText ?? ''), null, { timeout: 10000 }).catch(() => {});
-  ok(/一二[\s\S]*布布/.test(await page.locator('.hero').innerText()), 'couple: names shown on home');
+  await page.waitForFunction(() => /一二[\s\S]*布布/.test(document.querySelector('.greet')?.innerText ?? ''), null, { timeout: 10000 }).catch(() => {});
+  ok(/一二[\s\S]*布布/.test(await page.locator('.greet').innerText()), 'couple: names shown on home');
   await page.goto(BASE + '#/wardrobe');
   await page.click('.owner-tab:has-text("一二")');
   const herItems = await page.locator('.garment-card').count();

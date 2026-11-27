@@ -8,7 +8,7 @@ import { listGarments } from '../lib/garments';
 import { currentSeason, recommend, type Recommendation } from '../recommend/engine';
 import { useImageUrl } from '../lib/useImageUrl';
 import type { Garment } from '../lib/types';
-import { Avatar, Buddy } from '../components/Mascot';
+import { Avatar } from '../components/Mascot';
 import { belongsTo, useCouple } from '../lib/couple';
 
 function greeting() {
@@ -48,17 +48,17 @@ export function Home() {
 
   return (
     <div className="page">
-      <header className="hero">
-        <p className="hero-date">{today}</p>
-        <div className="hero-stage">
-          <div className="bubble"><h1>{greeting()}！<br />今天想穿什麼？</h1></div>
-          <div className="hero-cast" aria-label={`${couple.herName}和${couple.himName}`}>
-            <Cast who="her" name={couple.herName} id={couple.herAvatarId} />
-            <svg className="cast-heart" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 21s-8-5-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 6-8 11-8 11z" fill="#ff8fb1" stroke="#2e2a4f" strokeWidth="2" /></svg>
-            <Cast who="him" name={couple.himName} id={couple.himAvatarId} />
-          </div>
-        </div>
+      <header className="greet">
+        <p className="greet-date">{today}</p>
+        <h1>{greeting()}</h1>
+        <p className="greet-names"><Avatar who="her" size={22} /><Avatar who="him" size={22} /> {couple.herName} 與 {couple.himName}，今天想穿什麼？</p>
       </header>
+
+      <nav className="shortcuts" aria-label="快速開始">
+        <a href={href('/wardrobe/new')} className="shortcut"><Icon name="camera" size={22} /><span><b>新增衣服</b><small>拍照或從相簿選擇</small></span><Icon name="chevron" size={18} /></a>
+        <a href={href('/tryon')} className="shortcut"><Icon name="sparkle" size={22} /><span><b>AI 試穿</b><small>把衣服穿到全身照上</small></span><Icon name="chevron" size={18} /></a>
+        <a href="#/outfits?tab=recommend" className="shortcut"><Icon name="heart" size={22} /><span><b>問 AI 怎麼搭</b><small>用你衣櫥裡的衣服搭一套</small></span><Icon name="chevron" size={18} /></a>
+      </nav>
 
       {err && <div className="alert alert-err">{err}</div>}
       {needBackup && (
@@ -72,13 +72,10 @@ export function Home() {
         <a href={href('/outfits')} className="stat"><strong>{counts?.outfits ?? '–'}</strong><span>組穿搭</span></a>
         <a href={href('/outfits')} className="stat"><strong>{counts?.tryons ?? '–'}</strong><span>次試穿</span></a>
       </section>
-      {owned && owned.her + owned.him > 0 && (
-        <p className="muted center owned-line">{couple.herName}有 {owned.her} 件、{couple.himName}有 {owned.him} 件自己的衣服</p>
-      )}
 
       {picks.length > 0 && (
         <a href="#/outfits?tab=recommend" className="card today">
-          <span className="feature-kicker"><Icon name="sparkle" size={16} /> 今日推薦</span>
+          <h2 className="today-title">今日推薦</h2>
           {picks.map(({ who, r }) => (
             <div key={who ?? 'all'} className="today-pick">
               {who && <span className="today-who"><Avatar who={who} size={24} /> {couple.nameOf(who)}</span>}
@@ -90,24 +87,6 @@ export function Home() {
           ))}
         </a>
       )}
-
-      <a href={href('/tryon')} className="feature-card dark">
-        <div>
-          <span className="feature-kicker"><Icon name="sparkle" size={16} /> AI 試穿</span>
-          <h2>把衣櫥裡的衣服<br />穿到自己身上</h2>
-          <p>全程在手機上運算，照片不會離開你的裝置</p>
-        </div>
-        <Icon name="chevron" />
-      </a>
-
-      <a href={href('/wardrobe')} className="feature-card">
-        <div>
-          <span className="feature-kicker"><Icon name="hanger" size={16} /> 我的衣櫥</span>
-          <h2>{counts && counts.garments > 0 ? '整理你的衣服' : '從第一件衣服開始'}</h2>
-          <p>拍照、去背、分類，建立你的數位衣櫥</p>
-        </div>
-        <Icon name="chevron" />
-      </a>
 
       {!standalone && (
         <section className="card install">
@@ -129,7 +108,7 @@ export function Home() {
         </section>
       )}
 
-      <p className="privacy-note"><Icon name="shield" size={16} /> 所有照片與資料只儲存在這支手機；只有你主動使用「雲端 AI 試穿」時才會上傳那一次的照片。</p>
+      <p className="privacy-note"><Icon name="shield" size={16} /> 照片與資料都存在這支手機</p>
     </div>
   );
 }
@@ -139,12 +118,3 @@ function Thumb({ g }: { g: Garment }) {
   return <div className="today-thumb">{url && <img src={url} alt={g.name} />}<span>{g.name}</span></div>;
 }
 
-function Cast({ who, name, id }: { who: 'her' | 'him'; name: string; id?: string }) {
-  const url = useImageUrl(id);
-  return (
-    <div className="cast">
-      {url ? <img className="cast-img" src={url} alt="" /> : <Buddy who={who} pose={who === 'her' ? 'wave' : 'stand'} size={84} />}
-      <span className={`name-tag ${who}`}>{name}</span>
-    </div>
-  );
-}

@@ -1,14 +1,16 @@
-/* 浮動貼紙導覽列 */
+/* 精品風導覽列：貼底、細線圖示＋小字，選中為酒紅 */
 .nav {
-  position: fixed; left: 12px; right: 12px; bottom: calc(8px + env(safe-area-inset-bottom)); z-index: 20;
-  max-width: 576px; margin: 0 auto;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
   display: grid; grid-template-columns: repeat(5, 1fr);
-  background: var(--paper); border: 2.5px solid var(--edge); border-radius: 26px; box-shadow: 0 4px 0 var(--shadow-c);
-  padding: 4px;
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  -webkit-backdrop-filter: saturate(160%) blur(18px); backdrop-filter: saturate(160%) blur(18px);
+  border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 .tab {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-  min-height: 54px; color: var(--muted); text-decoration: none; font-size: 11px; font-weight: 700; border-radius: 20px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  min-height: 56px; color: var(--muted); text-decoration: none; font-size: 10.5px; font-weight: 500; letter-spacing: 0.02em;
   -webkit-tap-highlight-color: transparent;
 }
-.active { color: var(--on-accent); background: var(--butter); }
+.tab svg { stroke-width: 1.5; }
+.active { color: var(--accent); font-weight: 600; }
