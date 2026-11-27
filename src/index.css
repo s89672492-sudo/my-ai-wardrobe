@@ -675,3 +675,4 @@ h1, h2, .page-header h1, .empty h2, .today-title, .card-title, .greet h1, .stat 
 .select-bar { position: fixed; left: 0; right: 0; bottom: calc(57px + env(safe-area-inset-bottom)); z-index: 20; display: flex; gap: 10px; justify-content: space-between; padding: 10px 16px; background: var(--card); border-top: 1px solid var(--line); }
 .select-bar .btn-primary { flex: 1; }
 .page.selecting { padding-bottom: 140px; }
+.gemini-models { display: grid; gap: 8px; justify-items: start; margin: 4px 0 8px; }

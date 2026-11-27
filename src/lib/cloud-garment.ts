@@ -4,7 +4,7 @@
  * - mask：Gemini 文字模型標出衣服範圍（遮罩），用原本的照片去背，花紋不會變
  * - judge：判斷種類、顏色、季節、風格與名稱
  */
-import { base64ToBlob, DEFAULT_GEMINI_TEXT_MODEL, geminiCall, getGeminiModel, responseImage, responseText, toJpegBase64 } from './cloud-tryon';
+import { base64ToBlob, geminiGenerate, responseImage, responseText, toJpegBase64 } from './cloud-tryon';
 import { COLORS } from './image';
 import { CATEGORIES, SEASONS, type CategoryId, type Season } from './types';
 
@@ -13,7 +13,7 @@ export const COST_NT = { redraw: 1.3, mask: 0.05, judge: 0.05 } as const;
 
 /** 重畫在白底：回傳 Gemini 畫的圖（白底）；之後由 whiteToAlpha 去掉白底 */
 export async function geminiRedraw(photo: Blob | HTMLCanvasElement, signal?: AbortSignal): Promise<Blob> {
-  const r = await geminiCall(getGeminiModel(), {
+  const r = await geminiGenerate('image', {
     contents: [{ role: 'user', parts: [
       { text: [
         'Product photo editing. Take the single main clothing item in this photo and show ONLY that garment, laid flat / ghost-mannequin style, front view, centered, on a pure solid white background (#FFFFFF).',
@@ -34,7 +34,7 @@ export async function geminiRedraw(photo: Blob | HTMLCanvasElement, signal?: Abo
  * 格式見 Gemini 2.5 的影像分割：box_2d 為 [y0,x0,y1,x1]（0–1000），mask 為該框內的 PNG。
  */
 export async function geminiMask(photo: HTMLCanvasElement, signal?: AbortSignal): Promise<HTMLCanvasElement | null> {
-  const r = await geminiCall(DEFAULT_GEMINI_TEXT_MODEL, {
+  const r = await geminiGenerate('text', {
     contents: [{ role: 'user', parts: [
       { inline_data: { mime_type: 'image/jpeg', data: await toJpegBase64(photo, 1024) } },
       { text: 'Give the segmentation mask for the single main clothing item (garment, shoes, bag or accessory) in this image. Do not include the person, skin, hair, hanger or background. Output a JSON list with one entry containing the 2D bounding box in the key "box_2d", the segmentation mask in key "mask", and the text label in the key "label".' },
@@ -105,7 +105,7 @@ export interface GarmentJudgement { category: CategoryId; color: string; seasons
 export async function geminiJudge(image: Blob | HTMLCanvasElement, signal?: AbortSignal): Promise<GarmentJudgement> {
   const cats = CATEGORIES.map((c) => `${c.id}=${c.label}`).join(', ');
   const colors = COLORS.map((c) => c.label);
-  const r = await geminiCall(DEFAULT_GEMINI_TEXT_MODEL, {
+  const r = await geminiGenerate('text', {
     contents: [{ role: 'user', parts: [
       { inline_data: { mime_type: 'image/jpeg', data: await toJpegBase64(image, 512) } },
       { text: [

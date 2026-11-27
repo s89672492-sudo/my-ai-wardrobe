@@ -342,6 +342,15 @@ try {
   await page.route('https://generativelanguage.googleapis.com/**', async (route) => {
     const r = route.request();
     if (r.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'POST' } });
+    // 模擬 Google 停用預設文字模型：回 404，App 應查可用清單並自動改用 gemini-3-flash
+    if (r.method() === 'GET' && /\/v1beta\/models\?/.test(r.url())) {
+      cloudReqs.push({ kind: 'list', key: r.headers()['x-goog-api-key'], url: r.url() });
+      return route.fulfill({ status: 200, headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*' }, body: JSON.stringify({ models: ['gemini-2.5-flash-image', 'gemini-3-flash', 'gemini-3-pro', 'text-embedding-004'].map((n) => ({ name: 'models/' + n, supportedGenerationMethods: ['generateContent'] })) }) });
+    }
+    if (r.url().includes('/gemini-2.5-flash:generateContent')) {
+      cloudReqs.push({ kind: 'retired', key: r.headers()['x-goog-api-key'], url: r.url() });
+      return route.fulfill({ status: 404, headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*' }, body: JSON.stringify({ error: { code: 404, message: 'models/gemini-2.5-flash is not found for API version v1beta, or is not supported for generateContent.' } }) });
+    }
     const body = r.postData() ?? '';
     const kind = body.includes('segmentation mask') ? 'mask' : body.includes('responseSchema') ? 'judge' : 'other';
     cloudReqs.push({ kind, key: r.headers()['x-goog-api-key'], url: r.url() });
@@ -354,6 +363,10 @@ try {
   await page.goto(BASE + '#/settings');
   await page.fill('input[aria-label="Gemini API 金鑰"]', FAKE_KEY);
   await page.click('button:has-text("儲存金鑰")');
+  await page.waitForSelector('.gemini-models b:has-text("gemini-3-flash")', { timeout: 10000 }).catch(() => {});
+  ok(await page.locator('.gemini-models b:has-text("gemini-3-flash")').count() === 1, 'saving the key detects usable Gemini models automatically');
+  // 模擬「之前還能用、處理中途才被停用」：清掉自動選擇，讓第一個請求打到已停用的預設模型
+  await page.evaluate(() => localStorage.removeItem('wardrobe-gemini-auto-text'));
   await page.goto(BASE + '#/wardrobe/batch');
   await page.waitForSelector('input[type=file][multiple]', { state: 'attached' });
   await page.click('.process-opts label:has-text("AI 標出範圍")');
@@ -376,6 +389,8 @@ try {
   await page.waitForSelector('button.btn-primary:has-text("完成，回到衣櫥")', { timeout: 120000 });
   const cloudAdded = await page.locator('.batch-row.added').count();
   ok(cloudAdded === 2 && /Gemini 判斷/.test(await page.locator('.batch-list').innerText()), `paid batch resumed and finished (${cloudAdded} added)`);
+  ok(cloudReqs.some((q) => q.kind === 'retired') && cloudReqs.filter((q) => q.kind === 'mask' || q.kind === 'judge').every((q) => q.url.includes('/gemini-3-flash:')) && await page.evaluate(() => localStorage.getItem('wardrobe-gemini-auto-text')) === 'gemini-3-flash',
+    'retired Gemini model: switched automatically to a model the key can use, and remembered');
   ok(cloudReqs.length >= 4 && cloudReqs.every((q) => q.key === FAKE_KEY && !q.url.includes(FAKE_KEY)) && cloudReqs.some((q) => q.kind === 'mask') && cloudReqs.some((q) => q.kind === 'judge'),
     `paid batch: mask + judge requests with key in header (${cloudReqs.length} requests)`);
   await page.click('button:has-text("完成，回到衣櫥")');
