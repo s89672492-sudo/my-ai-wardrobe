@@ -48,7 +48,7 @@ function prompt(garments: CloudGarment[], extra: string) {
 
 /** 把 Google 的錯誤轉成看得懂的說明 */
 function friendly(status: number, msg: string): string {
-  if (status === 400 && /API key not valid|API_KEY_INVALID/i.test(msg)) return '金鑰不正確。請到設定頁重新貼上 Gemini 金鑰（AIza 開頭）。';
+  if (status === 400 && /API key not valid|API_KEY_INVALID/i.test(msg)) return '金鑰不正確。請到設定頁重新貼上 Gemini 金鑰（AQ. 或 AIza 開頭）。';
   if (status === 403 && /referer|referrer/i.test(msg)) return '金鑰的網站限制擋住了這個 App。請在 Google Cloud 的金鑰設定加入 https://s89672492-sudo.github.io/*';
   if (status === 403) return `Google 拒絕了請求（403）：可能是金鑰沒有開通 Generative Language API，或專案沒有綁定帳單。${msg ? `（${msg.slice(0, 120)}）` : ''}`;
   if (status === 429) return '已達 Google 的使用上限或預算上限，請稍後再試，或到 Google Cloud 查看帳單與配額。';
